@@ -1,0 +1,15 @@
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-empty-object-type": "error",
+    "react/no-unescaped-entities": "error"
+  },
+  "ignorePatterns": [
+    ".next/**", 
+    "node_modules/**",
+    "components/dashboard/UploadSection.tsx", 
+    "components/dashboard/DashboardLayout.tsx"
+  ]
+}
