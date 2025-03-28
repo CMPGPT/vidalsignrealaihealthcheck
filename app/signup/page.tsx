@@ -1,12 +1,13 @@
 'use client';
 
-import React from 'react'
-import Link from 'next/link'
-import AuthCarousel from '@/components/auth/AuthCarousel'
-import ReactCountryFlag from 'react-country-flag'
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import AuthCarousel from '@/components/auth/AuthCarousel';
+import ReactCountryFlag from 'react-country-flag';
 import { Separator } from '@/components/ui/separator';
+import { Eye, EyeOff } from 'lucide-react';
 
-// US states array
 const usStates = [
   { value: 'AL', label: 'Alabama' },
   { value: 'AK', label: 'Alaska' },
@@ -58,15 +59,51 @@ const usStates = [
   { value: 'WV', label: 'West Virginia' },
   { value: 'WI', label: 'Wisconsin' },
   { value: 'WY', label: 'Wyoming' },
-  { value: 'DC', label: 'District of Columbia' }
+  { value: 'DC', label: 'District of Columbia' },
 ];
 
 export default function Signup() {
+  const router = useRouter();
+
+  const [formData, setFormData] = useState({
+    first_Name: '',
+    last_Name: '',
+    organization_name: '',
+    state: '',
+    email: '',
+    password: '',
+    website_link: '',
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value });
+  };
+
+  const handleSignup = async () => {
+    try {
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || 'Signup failed');
+      alert('Signup successful!');
+      router.push('/login');
+    } catch (err: any) {
+      alert(err.message || 'Something went wrong');
+    }
+  };
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [isTermsAccepted, setIsTermsAccepted] = useState(false);
+
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 min-h-screen">
-      {/* Left Side Section - Signup Form */}
       <div className="flex flex-col justify-center items-center px-8 py-8 md:px-12 md:py-12 lg:px-16 lg:py-16">
-        {/* Logo positioned at top left */}
         <div className="absolute top-6 left-8 md:left-12 lg:left-16">
           <Link href="/" className="inline-block text-2xl font-bold text-primary hover:opacity-80 transition-opacity">
             VidalSigns
@@ -83,46 +120,44 @@ export default function Signup() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label htmlFor="firstName" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    First name
-                  </label>
+                  <label htmlFor="first_Name" className="text-sm font-medium">First name</label>
                   <input
-                    id="firstName"
+                    id="first_Name"
                     type="text"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={formData.first_Name}
+                    onChange={handleChange}
+                    className="input-style"
                     placeholder="John"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="lastName" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Last name
-                  </label>
+                  <label htmlFor="last_Name" className="text-sm font-medium">Last name</label>
                   <input
-                    id="lastName"
+                    id="last_Name"
                     type="text"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={formData.last_Name}
+                    onChange={handleChange}
+                    className="input-style"
                     placeholder="Doe"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="organizationName" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Organization name
-                </label>
+                <label htmlFor="organization_name" className="text-sm font-medium">Organization name</label>
                 <input
-                  id="organizationName"
+                  id="organization_name"
                   type="text"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={formData.organization_name}
+                  onChange={handleChange}
+                  className="input-style"
                   placeholder="VidalSigns Medical Center"
                 />
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center gap-2 mb-1">
-                  <label htmlFor="state" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    State
-                  </label>
+                  <label htmlFor="state" className="text-sm font-medium">State</label>
                   <div className="flex items-center text-sm text-muted-foreground">
                     <ReactCountryFlag countryCode="US" svg style={{ marginRight: '5px', width: '16px', height: '12px' }} />
                     United States
@@ -130,7 +165,9 @@ export default function Signup() {
                 </div>
                 <select
                   id="state"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={formData.state}
+                  onChange={handleChange}
+                  className="input-style"
                 >
                   <option value="">Select state</option>
                   {usStates.map((state) => (
@@ -142,25 +179,45 @@ export default function Signup() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Email
-                </label>
+                <label htmlFor="email" className="text-sm font-medium">Email</label>
                 <input
                   id="email"
                   type="email"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="input-style"
                   placeholder="m@example.com"
                 />
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Password
-                </label>
+              <div className="space-y-2 relative">
+                <label htmlFor="password" className="text-sm font-medium">Password</label>
                 <input
                   id="password"
-                  type="password"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="input-style pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-[38px] text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+
+              <div className="space-y-2">
+                <label htmlFor="website_link" className="text-sm font-medium">Website (optional)</label>
+                <input
+                  id="website_link"
+                  type="text"
+                  value={formData.website_link}
+                  onChange={handleChange}
+                  className="input-style"
+                  placeholder="https://example.com"
                 />
               </div>
 
@@ -168,6 +225,8 @@ export default function Signup() {
                 <input
                   type="checkbox"
                   id="terms"
+                  checked={isTermsAccepted}
+                  onChange={(e) => setIsTermsAccepted(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                 />
                 <label htmlFor="terms" className="text-sm text-muted-foreground">
@@ -175,9 +234,17 @@ export default function Signup() {
                 </label>
               </div>
 
-              <button className="bg-primary text-primary-foreground w-full rounded-md h-10 px-4 font-medium shadow-sm hover:bg-primary/90 transition-colors cursor-pointer">
+              <button
+                onClick={handleSignup}
+                disabled={!isTermsAccepted}
+                className={`w-full rounded-md h-10 px-4 font-medium shadow-sm transition-colors cursor-pointer ${isTermsAccepted
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+              >
                 Create Account
               </button>
+
             </div>
 
             <Separator />
@@ -185,6 +252,7 @@ export default function Signup() {
             <div className="relative">
               <div className="flex items-center justify-center my-4">
                 <span className="bg-background px-2 text-sm text-muted-foreground z-10">or continue with</span>
+
               </div>
 
               <div className="flex flex-col gap-3">
@@ -230,8 +298,7 @@ export default function Signup() {
         </div>
       </div>
 
-      {/* Right Side Section - Carousel */}
       <AuthCarousel />
     </div>
-  )
-} 
+  );
+}
