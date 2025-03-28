@@ -11,8 +11,14 @@ const nextConfig = {
     // Allow suppressing hydration errors that are caused by browser extensions
     // adding extra attributes to div elements
     styledComponents: true,
-    reactRemoveProperties: process.env.NODE_ENV === 'production' ? { properties: ['^bis_skin_checked$'] } : false,
+    reactRemoveProperties:
+      process.env.NODE_ENV === 'production'
+        ? { properties: ['^bis_skin_checked$'] }
+        : false,
   },
+
+  // 👇 Middleware matcher for protecting specific routes
+  matcher: ['/partners/:path*', '/chat/:path*'],
 };
 
-module.exports = nextConfig; 
+module.exports = nextConfig;

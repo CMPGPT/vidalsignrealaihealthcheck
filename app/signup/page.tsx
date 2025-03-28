@@ -1,11 +1,15 @@
 'use client';
 
-import React from 'react'
-import Link from 'next/link'
-import AuthCarousel from '@/components/auth/AuthCarousel'
-import ReactCountryFlag from 'react-country-flag'
+import React, { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import AuthCarousel from '@/components/auth/AuthCarousel';
+import ReactCountryFlag from 'react-country-flag';
+import { Separator } from '@/components/ui/separator';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import isEmail from 'validator/lib/isEmail';
+import Swal from 'sweetalert2'
 
-// US states array
 const usStates = [
   { value: 'AL', label: 'Alabama' },
   { value: 'AK', label: 'Alaska' },
@@ -57,21 +61,122 @@ const usStates = [
   { value: 'WV', label: 'West Virginia' },
   { value: 'WI', label: 'Wisconsin' },
   { value: 'WY', label: 'Wyoming' },
-  { value: 'DC', label: 'District of Columbia' }
+  { value: 'DC', label: 'District of Columbia' },
 ];
 
 export default function Signup() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [formData, setFormData] = useState({
+    first_Name: '',
+    last_Name: '',
+    organization_name: '',
+    state: '',
+    email: '',
+    password: '',
+    website_link: '',
+  });
+
+  const handleChange = async(e) => {
+    const { id, value } = e.target;
+    setFormData({ ...formData, [id]: value });
+
+    if (id === 'password') {
+      setPasswordStrength(getPasswordStrength(value));
+    }
+
+    if (id === 'email') {
+      setFormData({ ...formData, email: value });
+      const isValid = isEmail(value);
+      setIsEmailValid(isValid);
+
+      if (isValid) {
+        setIsCheckingEmail(true);
+        try {
+          const res = await fetch(`/api/check-email?email=${value}`);
+          const data = await res.json();
+          setIsEmailTaken(data.exists);
+        } catch {
+          setIsEmailTaken(false);
+        } finally {
+          setIsCheckingEmail(false);
+        }
+      } else {
+        setIsEmailTaken(false);
+      }
+    }
+  };
+
+  const handleSignup = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || 'Signup failed');
+
+      Swal.fire({
+        title: 'Signup Successful!',
+        text: 'Your account has been created. Please log in.',
+        icon: 'success',
+        confirmButtonText: 'OK',
+      }).then(() => {
+        router.push('/login');
+      });
+    } catch (err) {
+      Swal.fire({
+        title: 'Error!',
+        text: err.message || 'Something went wrong',
+        icon: 'error',
+        confirmButtonText: 'Try Again',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const [showPassword, setShowPassword] = useState(false);
+  const [isTermsAccepted, setIsTermsAccepted] = useState(false);
+  const [showPasswordHint, setShowPasswordHint] = useState(false);
+  const [isEmailValid, setIsEmailValid] = useState(true);
+  const [showEmailHint, setShowEmailHint] = useState(false);
+  const [isEmailTaken, setIsEmailTaken] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+
+  function getPasswordStrength(password) {
+    const strength = {
+      length: password.length >= 8,
+      upper: /[A-Z]/.test(password),
+      lower: /[a-z]/.test(password),
+      number: /[0-9]/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    };
+    return strength;
+  }
+
+  const [passwordStrength, setPasswordStrength] = useState({
+    length: false,
+    upper: false,
+    lower: false,
+    number: false,
+    special: false,
+  });
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 min-h-screen">
-      {/* Left Side Section - Signup Form */}
       <div className="flex flex-col justify-center items-center px-8 py-8 md:px-12 md:py-12 lg:px-16 lg:py-16">
-        {/* Logo positioned at top left */}
         <div className="absolute top-6 left-8 md:left-12 lg:left-16">
           <Link href="/" className="inline-block text-2xl font-bold text-primary hover:opacity-80 transition-opacity">
             VidalSigns
           </Link>
         </div>
-        
+
         <div className="w-full max-w-md space-y-8">
           <div className="space-y-2 text-center">
             <h1 className="text-3xl font-bold">Create an account</h1>
@@ -82,46 +187,44 @@ export default function Signup() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label htmlFor="firstName" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    First name
-                  </label>
+                  <label htmlFor="first_Name" className="text-sm font-medium">First name</label>
                   <input
-                    id="firstName"
+                    id="first_Name"
                     type="text"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={formData.first_Name}
+                    onChange={handleChange}
+                    className="input-style"
                     placeholder="John"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="lastName" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    Last name
-                  </label>
+                  <label htmlFor="last_Name" className="text-sm font-medium">Last name</label>
                   <input
-                    id="lastName"
+                    id="last_Name"
                     type="text"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    value={formData.last_Name}
+                    onChange={handleChange}
+                    className="input-style"
                     placeholder="Doe"
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="organizationName" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Organization name
-                </label>
+                <label htmlFor="organization_name" className="text-sm font-medium">Organization name</label>
                 <input
-                  id="organizationName"
+                  id="organization_name"
                   type="text"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={formData.organization_name}
+                  onChange={handleChange}
+                  className="input-style"
                   placeholder="VidalSigns Medical Center"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex items-center gap-2 mb-1">
-                  <label htmlFor="state" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                    State
-                  </label>
+                  <label htmlFor="state" className="text-sm font-medium">State</label>
                   <div className="flex items-center text-sm text-muted-foreground">
                     <ReactCountryFlag countryCode="US" svg style={{ marginRight: '5px', width: '16px', height: '12px' }} />
                     United States
@@ -129,7 +232,9 @@ export default function Signup() {
                 </div>
                 <select
                   id="state"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={formData.state}
+                  onChange={handleChange}
+                  className="input-style"
                 >
                   <option value="">Select state</option>
                   {usStates.map((state) => (
@@ -139,44 +244,167 @@ export default function Signup() {
                   ))}
                 </select>
               </div>
-              
+
               <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Email
-                </label>
+                <label htmlFor="email" className="text-sm font-medium">Email</label>
                 <input
                   id="email"
                   type="email"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={formData.email}
+                  onChange={handleChange}
+                  onFocus={() => setShowEmailHint(true)}
+                  onBlur={() => {
+                    if (formData.email === '') setShowEmailHint(false);
+                  }}
+                  className={`input-style ${formData.email && !isEmailValid ? 'border-red-500' : ''}`}
                   placeholder="m@example.com"
                 />
+
+                {showEmailHint && (
+                  <div
+                    className={`transition-all duration-300 transform text-sm mt-1 ${formData.email ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}
+                  >
+                    {!isEmailValid ? (
+                      <p className="text-red-500">Please enter a valid email address.</p>
+                    ) : (
+                      <p className="text-green-600">Valid email format.</p>
+                    )}
+
+                    {showEmailHint && isEmailValid && (
+                      <div className="text-sm mt-1">
+                        {isCheckingEmail ? (
+                          <p className="text-yellow-500">Checking email availability...</p>
+                        ) : isEmailTaken ? (
+                          <p className="text-red-500">Email is already taken.</p>
+                        ) : (
+                          <p className="text-green-600">Email is available.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="password" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Password
-                </label>
+
+              <div className="space-y-2 relative">
+                <label htmlFor="password" className="text-sm font-medium">Password</label>
                 <input
                   id="password"
-                  type="password"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={handleChange}
+                  onFocus={() => setShowPasswordHint(true)}
+                  onBlur={() => {
+                    if (formData.password === '') setShowPasswordHint(false);
+                  }}
+                  className="input-style pr-10"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-[38px] text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+                {showPasswordHint && (
+                  <div className="text-sm mt-1 space-y-1 text-muted-foreground">
+                    <p className={passwordStrength.length ? 'text-green-600' : 'text-red-500'}>
+                      • At least 8 characters
+                    </p>
+                    <p className={passwordStrength.upper ? 'text-green-600' : 'text-red-500'}>
+                      • Contains uppercase letter
+                    </p>
+                    <p className={passwordStrength.lower ? 'text-green-600' : 'text-red-500'}>
+                      • Contains lowercase letter
+                    </p>
+                    <p className={passwordStrength.number ? 'text-green-600' : 'text-red-500'}>
+                      • Contains number
+                    </p>
+                    <p className={passwordStrength.special ? 'text-green-600' : 'text-red-500'}>
+                      • Contains special character
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="website_link" className="text-sm font-medium">Website (optional)</label>
+                <input
+                  id="website_link"
+                  type="text"
+                  value={formData.website_link}
+                  onChange={handleChange}
+                  className="input-style"
+                  placeholder="https://example.com"
                 />
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
                   id="terms"
+                  checked={isTermsAccepted}
+                  onChange={(e) => setIsTermsAccepted(e.target.checked)}
                   className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                 />
                 <label htmlFor="terms" className="text-sm text-muted-foreground">
                   I agree to the <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link> and <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
                 </label>
               </div>
-              
-              <button className="bg-primary text-primary-foreground w-full rounded-md h-10 px-4 font-medium shadow-sm hover:bg-primary/90 transition-colors cursor-pointer">
-                Create Account
+
+              <button
+                onClick={handleSignup}
+                disabled={!isTermsAccepted || isLoading}
+                className={`w-full rounded-md h-10 px-4 font-medium shadow-sm transition-colors ${
+                  isTermsAccepted && !isLoading
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : isLoading
+                    ? 'bg-primary/70 text-primary-foreground cursor-wait'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {isLoading ? (
+                  <span className="flex items-center justify-center">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </span>
+                ) : (
+                  'Create Account'
+                )}
               </button>
+            </div>
+
+            <Separator />
+
+            <div className="relative">
+              <div className="flex items-center justify-center my-4">
+                <span className="bg-background px-2 text-sm text-muted-foreground z-10">or continue with</span>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center w-full h-10 px-4 border border-input rounded-md shadow-sm bg-white hover:bg-muted transition-colors"
+                >
+                  <svg className="w-5 h-5 mr-2" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#4285F4" d="M533.5 278.4c0-17.4-1.4-34.1-4.1-50.4H272v95.3h147.1c-6.4 34.8-25.7 64.3-54.8 84.1v69h88.7c51.9-47.8 80.5-118.3 80.5-198z" />
+                    <path fill="#34A853" d="M272 544.3c73.8 0 135.6-24.5 180.7-66.4l-88.7-69c-24.6 16.5-56.1 26.4-92 26.4-70.8 0-130.7-47.8-152.2-111.8H29.5v70.5C74.2 475.1 167.7 544.3 272 544.3z" />
+                    <path fill="#FBBC05" d="M119.8 323.5c-10.2-30-10.2-62.3 0-92.3v-70.5H29.5c-38.5 76.4-38.5 167.9 0 244.3l90.3-70.5z" />
+                    <path fill="#EA4335" d="M272 107.3c39.9-.6 78.2 13.7 107.5 39.3l80.2-80.2C408.2 23.5 343.2-1.2 272 0 167.7 0 74.2 69.2 29.5 177l90.3 70.5C141.3 155.1 201.2 107.3 272 107.3z" />
+                  </svg>
+                  Continue with Google
+                </button>
+
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center w-full h-10 px-4 border border-input rounded-md shadow-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                >
+                  <svg className="w-5 h-5 mr-2 fill-white" viewBox="0 0 24 24">
+                    <path d="M22 12.07C22 6.48 17.52 2 12 2S2 6.48 2 12.07c0 5 3.66 9.13 8.44 9.93v-7.03h-2.54v-2.9h2.54V9.41c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.23.2 2.23.2v2.46h-1.25c-1.23 0-1.61.77-1.61 1.56v1.87h2.74l-.44 2.9h-2.3v7.03C18.34 21.2 22 17.07 22 12.07z" />
+                  </svg>
+                  Continue with Facebook
+                </button>
+              </div>
             </div>
 
             <div className="text-center text-sm">
@@ -185,7 +413,7 @@ export default function Signup() {
                 Log in
               </Link>
             </div>
-            
+
             <div className="text-center text-sm text-muted-foreground">
               <Link href="/" className="hover:underline hover:text-foreground cursor-pointer">
                 ← Back to home
@@ -195,8 +423,7 @@ export default function Signup() {
         </div>
       </div>
 
-      {/* Right Side Section - Carousel */}
       <AuthCarousel />
     </div>
-  )
-} 
+  );
+}
