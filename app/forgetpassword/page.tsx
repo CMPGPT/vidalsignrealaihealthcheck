@@ -26,32 +26,31 @@ export default function ForgotPassword() {
   // Handle email submission
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Clear previous messages
+
     setError('');
     setSuccess('');
-    
-    // Validate email
+
     if (!email || !isEmail(email)) {
       setError('Please enter a valid email address.');
       return;
     }
-    
+
     try {
       setIsLoading(true);
-      
-      // Simulate API call to send verification code
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // In a real app, you would make an API call like:
-      // const response = await fetch('/api/forgot-password', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email }),
-      // });
-      // const data = await response.json();
-      // if (!response.ok) throw new Error(data.message);
-      
+
+      const response = await fetch('/api/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Show specific error from backend if available
+        throw new Error(data.message || 'Failed to send verification code.');
+      }
+
       setSuccess('Verification code has been sent to your email.');
       setStep('verification');
     } catch (err: any) {
@@ -61,15 +60,16 @@ export default function ForgotPassword() {
     }
   };
 
+
   // Handle verification code inputs
   const handleCodeChange = (index: number, value: string) => {
     // Only allow digits
     if (value && !/^\d+$/.test(value)) return;
-    
+
     const newVerificationCode = [...verificationCode];
     newVerificationCode[index] = value;
     setVerificationCode(newVerificationCode);
-    
+
     // Auto focus to next input if value is entered
     if (value && index < 7) {
       const nextInput = document.getElementById(`code-${index + 1}`);
@@ -82,33 +82,33 @@ export default function ForgotPassword() {
   // Handle verification code submission
   const handleVerificationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Clear previous messages
     setError('');
     setSuccess('');
-    
+
     // Check if code is complete
     const code = verificationCode.join('');
     if (code.length !== 8) {
       setError('Please enter the complete 8-digit verification code.');
       return;
     }
-    
+
     try {
       setIsLoading(true);
-      
+
       // Simulate API call to verify code
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // In a real app, you would make an API call like:
-      // const response = await fetch('/api/verify-code', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, code }),
-      // });
-      // const data = await response.json();
-      // if (!response.ok) throw new Error(data.message);
-      
+
+
+      const response = await fetch('/api/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message);
+
       setSuccess('Code verified successfully. Please set your new password.');
       setStep('newPassword');
     } catch (err: any) {
@@ -121,40 +121,43 @@ export default function ForgotPassword() {
   // Handle password reset
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Clear previous messages
+
     setError('');
     setSuccess('');
-    
-    // Validate passwords
+
     if (password.length < 8) {
       setError('Password must be at least 8 characters long.');
       return;
     }
-    
+
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
-    
+
     try {
       setIsLoading(true);
-      
-      // Simulate API call to reset password
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // In a real app, you would make an API call like:
-      // const response = await fetch('/api/reset-password', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, code: verificationCode.join(''), password }),
-      // });
-      // const data = await response.json();
-      // if (!response.ok) throw new Error(data.message);
-      
+
+      const response = await fetch('/api/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          code: verificationCode.join(''),
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) throw new Error(data.message);
+
+      if (!response.ok) {
+        // Show specific error from backend if available
+        throw new Error(data.message || 'You have used this password before. Please choose a new password.');
+      }
       setSuccess('Password has been reset successfully. You can now log in with your new password.');
-      
-      // Redirect to login after 2 seconds
+
       setTimeout(() => {
         router.push('/login');
       }, 2000);
@@ -165,6 +168,7 @@ export default function ForgotPassword() {
     }
   };
 
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="absolute top-6 left-8">
@@ -172,12 +176,12 @@ export default function ForgotPassword() {
           VidalSigns
         </Link>
       </div>
-      
+
       <Link href="/login" className="absolute top-6 right-8 text-sm text-muted-foreground hover:text-foreground transition-colors">
         <ArrowLeft className="h-4 w-4 inline mr-1" />
         Back to login
       </Link>
-      
+
       <div className="mx-auto flex w-full flex-col justify-center space-y-6 max-w-md">
         <div className="flex flex-col space-y-2 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">Reset your password</h1>
@@ -185,32 +189,32 @@ export default function ForgotPassword() {
             We'll guide you through the process to reset your password.
           </p>
         </div>
-        
+
         <Tabs value={step} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger 
-              value="email" 
+            <TabsTrigger
+              value="email"
               disabled={true}
               className={step === 'email' ? 'bg-primary text-primary-foreground' : ''}
             >
               Email
             </TabsTrigger>
-            <TabsTrigger 
-              value="verification" 
+            <TabsTrigger
+              value="verification"
               disabled={true}
               className={step === 'verification' ? 'bg-primary text-primary-foreground' : ''}
             >
               Verify
             </TabsTrigger>
-            <TabsTrigger 
-              value="newPassword" 
+            <TabsTrigger
+              value="newPassword"
               disabled={true}
               className={step === 'newPassword' ? 'bg-primary text-primary-foreground' : ''}
             >
               New Password
             </TabsTrigger>
           </TabsList>
-          
+
           {/* Email Step */}
           <TabsContent value="email">
             <Card>
@@ -266,7 +270,7 @@ export default function ForgotPassword() {
               </form>
             </Card>
           </TabsContent>
-          
+
           {/* Verification Step */}
           <TabsContent value="verification">
             <Card>
@@ -291,7 +295,7 @@ export default function ForgotPassword() {
                       </AlertDescription>
                     </Alert>
                   )}
-                  
+
                   <div className="space-y-2">
                     <Label>Verification Code</Label>
                     <div className="flex justify-between">
@@ -319,9 +323,9 @@ export default function ForgotPassword() {
                       ))}
                     </div>
                   </div>
-                  
+
                   <div className="text-center text-sm text-muted-foreground">
-                    <button 
+                    <button
                       type="button"
                       onClick={() => {
                         setStep('email');
@@ -349,7 +353,7 @@ export default function ForgotPassword() {
               </form>
             </Card>
           </TabsContent>
-          
+
           {/* New Password Step */}
           <TabsContent value="newPassword">
             <Card>
@@ -374,7 +378,7 @@ export default function ForgotPassword() {
                       </AlertDescription>
                     </Alert>
                   )}
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="password">New Password</Label>
                     <div className="relative">
@@ -390,7 +394,7 @@ export default function ForgotPassword() {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirm Password</Label>
                     <div className="relative">
