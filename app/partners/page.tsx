@@ -3,11 +3,15 @@
 import React, { Suspense } from "react";
 import PartnerOverview from "@/components/partners/PartnerOverview";
 import { useSearchParams } from "next/navigation";
+import { useSession, signOut } from 'next-auth/react';
 
 function PartnerDashboardContent() {
   const searchParams = useSearchParams();
   // Default partner ID - in a real app, this would come from authentication context
   const partnerId = "P-001";
+  const { data: session, status } = useSession();
+
+  console.log(session)
   
   return (
     <div>

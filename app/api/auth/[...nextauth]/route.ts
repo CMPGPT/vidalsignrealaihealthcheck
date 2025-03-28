@@ -1,41 +1,39 @@
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
-import dbConnect from "@/lib/dbConnect";
-import PartnerUser from "@/models/PartnerUser";
-import bcrypt from "bcryptjs";
+import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import FacebookProvider from "next-auth/providers/facebook";
+import { authorizeUser } from "@/lib/auth";
 
 const handler = NextAuth({
   providers: [
-    Credentials({
-      name: "Credentials",
+    CredentialsProvider({
+      name: "Email and Password",
       credentials: {
         email: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        await dbConnect();
-
-        const user = await PartnerUser.findOne({ email: credentials?.email });
-        if (!user) throw new Error("No user found");
-
-        const isValid = await bcrypt.compare(credentials!.password, user.password);
-        if (!isValid) throw new Error("Invalid password");
-
-        return {
-          id: user._id.toString(),
-          name: `${user.first_Name} ${user.last_Name}`,
-          email: user.email,
-        };
+        return await authorizeUser(credentials);
       },
+    }),
+
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+
+    FacebookProvider({
+      clientId: process.env.FACEBOOK_CLIENT_ID!,
+      clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
     }),
   ],
   session: {
     strategy: "jwt",
   },
-  secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: "/login",
   },
+  secret: process.env.NEXTAUTH_SECRET,
 });
 
 export { handler as GET, handler as POST };

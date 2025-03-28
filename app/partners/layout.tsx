@@ -4,8 +4,9 @@ import { Layout } from "@/components/layout/Layout";
 import { LogOut, Home, QrCode, BarChart3, Settings, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { redirect, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { signOut } from "next-auth/react";
 
 export default function PartnerLayout({
   children,
@@ -31,12 +32,12 @@ export default function PartnerLayout({
           <div className="mb-2" />
             <div className="flex justify-between items-center mb-4">
               <h1 className="text-2xl font-bold">Partner Dashboard</h1>
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="flex items-center gap-2">
+              <div onClick={() => signOut({ callbackUrl: '/' })}>
+                <Button  variant="ghost" size="sm" className="flex items-center gap-2">
                   <LogOut className="h-4 w-4" />
                   <span>Sign Out</span>
                 </Button>
-              </Link>
+              </div>
             </div>
 
             <div className="mb-2" />
