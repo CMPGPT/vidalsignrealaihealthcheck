@@ -6,7 +6,9 @@ import { useRouter } from 'next/navigation';
 import AuthCarousel from '@/components/auth/AuthCarousel';
 import ReactCountryFlag from 'react-country-flag';
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import isEmail from 'validator/lib/isEmail';
+import Swal from 'sweetalert2'
 
 const usStates = [
   { value: 'AL', label: 'Alabama' },
@@ -64,6 +66,7 @@ const usStates = [
 
 export default function Signup() {
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     first_Name: '',
@@ -75,11 +78,38 @@ export default function Signup() {
     website_link: '',
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.id]: e.target.value });
+  const handleChange = async(e) => {
+    const { id, value } = e.target;
+    setFormData({ ...formData, [id]: value });
+
+    if (id === 'password') {
+      setPasswordStrength(getPasswordStrength(value));
+    }
+
+    if (id === 'email') {
+      setFormData({ ...formData, email: value });
+      const isValid = isEmail(value);
+      setIsEmailValid(isValid);
+
+      if (isValid) {
+        setIsCheckingEmail(true);
+        try {
+          const res = await fetch(`/api/check-email?email=${value}`);
+          const data = await res.json();
+          setIsEmailTaken(data.exists);
+        } catch {
+          setIsEmailTaken(false);
+        } finally {
+          setIsCheckingEmail(false);
+        }
+      } else {
+        setIsEmailTaken(false);
+      }
+    }
   };
 
   const handleSignup = async () => {
+    setIsLoading(true);
     try {
       const res = await fetch('/api/signup', {
         method: 'POST',
@@ -90,16 +120,53 @@ export default function Signup() {
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.message || 'Signup failed');
-      alert('Signup successful!');
-      router.push('/login');
-    } catch (err: any) {
-      alert(err.message || 'Something went wrong');
+
+      Swal.fire({
+        title: 'Signup Successful!',
+        text: 'Your account has been created. Please log in.',
+        icon: 'success',
+        confirmButtonText: 'OK',
+      }).then(() => {
+        router.push('/login');
+      });
+    } catch (err) {
+      Swal.fire({
+        title: 'Error!',
+        text: err.message || 'Something went wrong',
+        icon: 'error',
+        confirmButtonText: 'Try Again',
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const [showPassword, setShowPassword] = useState(false);
   const [isTermsAccepted, setIsTermsAccepted] = useState(false);
+  const [showPasswordHint, setShowPasswordHint] = useState(false);
+  const [isEmailValid, setIsEmailValid] = useState(true);
+  const [showEmailHint, setShowEmailHint] = useState(false);
+  const [isEmailTaken, setIsEmailTaken] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
+  function getPasswordStrength(password) {
+    const strength = {
+      length: password.length >= 8,
+      upper: /[A-Z]/.test(password),
+      lower: /[a-z]/.test(password),
+      number: /[0-9]/.test(password),
+      special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    };
+    return strength;
+  }
+
+  const [passwordStrength, setPasswordStrength] = useState({
+    length: false,
+    upper: false,
+    lower: false,
+    number: false,
+    special: false,
+  });
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 min-h-screen">
@@ -185,9 +252,37 @@ export default function Signup() {
                   type="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="input-style"
+                  onFocus={() => setShowEmailHint(true)}
+                  onBlur={() => {
+                    if (formData.email === '') setShowEmailHint(false);
+                  }}
+                  className={`input-style ${formData.email && !isEmailValid ? 'border-red-500' : ''}`}
                   placeholder="m@example.com"
                 />
+
+                {showEmailHint && (
+                  <div
+                    className={`transition-all duration-300 transform text-sm mt-1 ${formData.email ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}
+                  >
+                    {!isEmailValid ? (
+                      <p className="text-red-500">Please enter a valid email address.</p>
+                    ) : (
+                      <p className="text-green-600">Valid email format.</p>
+                    )}
+
+                    {showEmailHint && isEmailValid && (
+                      <div className="text-sm mt-1">
+                        {isCheckingEmail ? (
+                          <p className="text-yellow-500">Checking email availability...</p>
+                        ) : isEmailTaken ? (
+                          <p className="text-red-500">Email is already taken.</p>
+                        ) : (
+                          <p className="text-green-600">Email is available.</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2 relative">
@@ -197,8 +292,13 @@ export default function Signup() {
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
                   onChange={handleChange}
+                  onFocus={() => setShowPasswordHint(true)}
+                  onBlur={() => {
+                    if (formData.password === '') setShowPasswordHint(false);
+                  }}
                   className="input-style pr-10"
                 />
+
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -206,8 +306,26 @@ export default function Signup() {
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
+                {showPasswordHint && (
+                  <div className="text-sm mt-1 space-y-1 text-muted-foreground">
+                    <p className={passwordStrength.length ? 'text-green-600' : 'text-red-500'}>
+                      • At least 8 characters
+                    </p>
+                    <p className={passwordStrength.upper ? 'text-green-600' : 'text-red-500'}>
+                      • Contains uppercase letter
+                    </p>
+                    <p className={passwordStrength.lower ? 'text-green-600' : 'text-red-500'}>
+                      • Contains lowercase letter
+                    </p>
+                    <p className={passwordStrength.number ? 'text-green-600' : 'text-red-500'}>
+                      • Contains number
+                    </p>
+                    <p className={passwordStrength.special ? 'text-green-600' : 'text-red-500'}>
+                      • Contains special character
+                    </p>
+                  </div>
+                )}
               </div>
-
 
               <div className="space-y-2">
                 <label htmlFor="website_link" className="text-sm font-medium">Website (optional)</label>
@@ -236,15 +354,24 @@ export default function Signup() {
 
               <button
                 onClick={handleSignup}
-                disabled={!isTermsAccepted}
-                className={`w-full rounded-md h-10 px-4 font-medium shadow-sm transition-colors cursor-pointer ${isTermsAccepted
+                disabled={!isTermsAccepted || isLoading}
+                className={`w-full rounded-md h-10 px-4 font-medium shadow-sm transition-colors ${
+                  isTermsAccepted && !isLoading
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : isLoading
+                    ? 'bg-primary/70 text-primary-foreground cursor-wait'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
+                }`}
               >
-                Create Account
+                {isLoading ? (
+                  <span className="flex items-center justify-center">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </span>
+                ) : (
+                  'Create Account'
+                )}
               </button>
-
             </div>
 
             <Separator />
@@ -252,7 +379,6 @@ export default function Signup() {
             <div className="relative">
               <div className="flex items-center justify-center my-4">
                 <span className="bg-background px-2 text-sm text-muted-foreground z-10">or continue with</span>
-
               </div>
 
               <div className="flex flex-col gap-3">
@@ -280,7 +406,6 @@ export default function Signup() {
                 </button>
               </div>
             </div>
-
 
             <div className="text-center text-sm">
               Already have an account?{" "}

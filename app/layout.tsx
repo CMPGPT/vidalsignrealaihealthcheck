@@ -15,6 +15,9 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "Patient Pulse Bridge",
   description: "Connect patients and healthcare providers seamlessly",
+  icons: {
+    icon: '/icon.ico',
+  },
 };
 
 export default function RootLayout({

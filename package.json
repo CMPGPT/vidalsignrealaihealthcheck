@@ -62,10 +62,12 @@
     "react-super-responsive-table": "^6.0.2",
     "recharts": "^2.15.1",
     "sonner": "^1.5.0",
+    "sweetalert2": "^11.17.2",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.174.0",
     "uuid": "^11.1.0",
+    "validator": "^13.15.0",
     "vaul": "^0.9.3",
     "zod": "^3.23.8"
   },
