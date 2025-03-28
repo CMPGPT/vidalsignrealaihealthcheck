@@ -1,100 +1,85 @@
-'use client';
+'use client'
 
-import { useSession, signOut } from "next-auth/react";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import Header from "@/components/chat/Header";
+import ReportSummary from "@/components/chat/ReportSummary";
+import ChatInterface from "@/components/chat/ChatInterface";
+import { Toaster } from "@/components/ui/sonner";
+import React from 'react'
 
-export default function UserProfile() {
-  const { data: session, status } = useSession();
-  const [isSigningOut, setIsSigningOut] = useState(false);
+// Next.js functional component
+export default function page() {
+  // Sample report data
+  const [report, setReport] = useState({
+    id: "REP-2023-001",
+    title: "Comprehensive Health Assessment",
+    date: "October 15, 2023",
+    summary: `Your recent laboratory results show normal complete blood count (CBC) values. White blood cells, red blood cells, and platelets are all within expected ranges.
 
-  const handleSignOut = async () => {
-    try {
-      setIsSigningOut(true);
-      
-      // Clear any local storage data if needed
-      localStorage.removeItem('user-session');
-      sessionStorage.clear();
-      
-      // Use signOut with specific options to ensure cookies are cleared
-      await signOut({ 
-        redirect: false,
-        callbackUrl: '/'
-      });
-      
-      // Use a small delay to ensure cookies are processed
-      setTimeout(() => {
-        // Force a hard redirect to clear any remaining state
-        window.location.href = '/';
-      }, 300);
-      
-    } catch (error) {
-      console.error('Error signing out:', error);
-      setIsSigningOut(false);
-    }
+    Your cholesterol profile shows slightly elevated LDL levels (130 mg/dL), while HDL remains optimal. Your doctor recommends dietary adjustments to improve these values.
+
+    Blood pressure reading of 128/82 mmHg indicates pre-hypertension. Regular monitoring is advised with lifestyle modifications including reduced sodium intake and regular exercise.
+
+    Glucose levels are normal at 92 mg/dL, showing no signs of diabetes or pre-diabetic condition.`,
+    expiryTime: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+  });
+
+  // Sample suggested questions
+  const suggestedQuestions = [
+    "What do my cholesterol levels mean?",
+    "Should I be concerned about my blood pressure?",
+    "What dietary changes are recommended?",
+  ];
+
+  const handleAskQuestion = (question: string) => {
+    console.log("Question asked:", question);
+    // Handle the question (would connect to AI backend in a real app)
   };
 
-  if (status === "loading") {
-    return <div className="p-8 text-center">Loading...</div>;
-  }
-
-  if (status === "unauthenticated") {
-    return <div className="p-8 text-center">Not signed in. Please <a href="/login" className="text-blue-600 hover:underline">sign in</a>.</div>;
-  }
+  const handleDeleteReport = () => {
+    // In a real app, you would call an API to delete the report
+    // For demo purposes, we'll just clear the report
+    setReport({
+      id: "",
+      title: "",
+      date: "",
+      summary: "",
+      expiryTime: new Date(),
+    });
+  };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold mb-6 text-center">User Profile</h1>
-      
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold mb-3">Authentication Data:</h2>
-        <div className="bg-gray-50 p-4 rounded border">
-          <pre className="whitespace-pre-wrap break-words text-sm">
-            {JSON.stringify(session, null, 2)}
-          </pre>
-        </div>
-      </div>
-      
-      <div className="space-y-3">
-        <div>
-          <strong>Name:</strong> {session?.user?.name || 'Not available'}
-        </div>
-        <div>
-          <strong>Email:</strong> {session?.user?.email || 'Not available'}
-        </div>
-        {session?.user?.id && (
-          <div>
-            <strong>User ID:</strong> {session.user.id}
+    <div className="min-h-screen bg-teal-100 flex flex-col bg-gradient-to-b from-background to-muted/30 backdrop-blur-xs">
+      <Header />
+
+      <main className="flex-1 container max-w-7xl mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+          {/* Left column - Report summary */}
+          <div className="space-y-6 lg:max-h-[calc(100vh-12rem)] overflow-y-auto animate-fade-in animate-in-delay-1">
+            {report.id ? (
+              <ReportSummary
+                report={report}
+                onDelete={handleDeleteReport}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-muted-foreground">Report has been deleted</p>
+              </div>
+            )}
           </div>
-        )}
-        {session?.user?.role && (
-          <div>
-            <strong>Role:</strong> {session.user.role}
+
+          {/* Right column - Chat interface */}
+          <div className="lg:h-[calc(100vh-12rem)] animate-fade-in animate-in-delay-2">
+            <ChatInterface
+              suggestedQuestions={suggestedQuestions}
+              onAskQuestion={handleAskQuestion}
+            />
           </div>
-        )}
-        {session?.user?.organization && (
-          <div>
-            <strong>Organization:</strong> {session.user.organization}
-          </div>
-        )}
-      </div>
-      
-      <div className="mt-8">
-        <button
-          onClick={handleSignOut}
-          disabled={isSigningOut}
-          className="w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-md transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
-        >
-          {isSigningOut ? (
-            <span className="flex items-center justify-center">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Signing Out...
-            </span>
-          ) : (
-            'Sign Out'
-          )}
-        </button>
-      </div>
+        </div>
+      </main>
+
+      <Toaster />
     </div>
   );
-}
+};
+
