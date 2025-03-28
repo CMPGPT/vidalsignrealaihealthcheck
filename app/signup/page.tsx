@@ -4,6 +4,7 @@ import React from 'react'
 import Link from 'next/link'
 import AuthCarousel from '@/components/auth/AuthCarousel'
 import ReactCountryFlag from 'react-country-flag'
+import { Separator } from '@/components/ui/separator';
 
 // US states array
 const usStates = [
@@ -71,7 +72,7 @@ export default function Signup() {
             VidalSigns
           </Link>
         </div>
-        
+
         <div className="w-full max-w-md space-y-8">
           <div className="space-y-2 text-center">
             <h1 className="text-3xl font-bold">Create an account</h1>
@@ -116,7 +117,7 @@ export default function Signup() {
                   placeholder="VidalSigns Medical Center"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex items-center gap-2 mb-1">
                   <label htmlFor="state" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -139,7 +140,7 @@ export default function Signup() {
                   ))}
                 </select>
               </div>
-              
+
               <div className="space-y-2">
                 <label htmlFor="email" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                   Email
@@ -151,7 +152,7 @@ export default function Signup() {
                   placeholder="m@example.com"
                 />
               </div>
-              
+
               <div className="space-y-2">
                 <label htmlFor="password" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                   Password
@@ -162,7 +163,7 @@ export default function Signup() {
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
               </div>
-              
+
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -173,11 +174,45 @@ export default function Signup() {
                   I agree to the <Link href="/terms" className="text-primary hover:underline">Terms of Service</Link> and <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
                 </label>
               </div>
-              
+
               <button className="bg-primary text-primary-foreground w-full rounded-md h-10 px-4 font-medium shadow-sm hover:bg-primary/90 transition-colors cursor-pointer">
                 Create Account
               </button>
             </div>
+
+            <Separator />
+
+            <div className="relative">
+              <div className="flex items-center justify-center my-4">
+                <span className="bg-background px-2 text-sm text-muted-foreground z-10">or continue with</span>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center w-full h-10 px-4 border border-input rounded-md shadow-sm bg-white hover:bg-muted transition-colors"
+                >
+                  <svg className="w-5 h-5 mr-2" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#4285F4" d="M533.5 278.4c0-17.4-1.4-34.1-4.1-50.4H272v95.3h147.1c-6.4 34.8-25.7 64.3-54.8 84.1v69h88.7c51.9-47.8 80.5-118.3 80.5-198z" />
+                    <path fill="#34A853" d="M272 544.3c73.8 0 135.6-24.5 180.7-66.4l-88.7-69c-24.6 16.5-56.1 26.4-92 26.4-70.8 0-130.7-47.8-152.2-111.8H29.5v70.5C74.2 475.1 167.7 544.3 272 544.3z" />
+                    <path fill="#FBBC05" d="M119.8 323.5c-10.2-30-10.2-62.3 0-92.3v-70.5H29.5c-38.5 76.4-38.5 167.9 0 244.3l90.3-70.5z" />
+                    <path fill="#EA4335" d="M272 107.3c39.9-.6 78.2 13.7 107.5 39.3l80.2-80.2C408.2 23.5 343.2-1.2 272 0 167.7 0 74.2 69.2 29.5 177l90.3 70.5C141.3 155.1 201.2 107.3 272 107.3z" />
+                  </svg>
+                  Continue with Google
+                </button>
+
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center w-full h-10 px-4 border border-input rounded-md shadow-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                >
+                  <svg className="w-5 h-5 mr-2 fill-white" viewBox="0 0 24 24">
+                    <path d="M22 12.07C22 6.48 17.52 2 12 2S2 6.48 2 12.07c0 5 3.66 9.13 8.44 9.93v-7.03h-2.54v-2.9h2.54V9.41c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.23.2 2.23.2v2.46h-1.25c-1.23 0-1.61.77-1.61 1.56v1.87h2.74l-.44 2.9h-2.3v7.03C18.34 21.2 22 17.07 22 12.07z" />
+                  </svg>
+                  Continue with Facebook
+                </button>
+              </div>
+            </div>
+
 
             <div className="text-center text-sm">
               Already have an account?{" "}
@@ -185,7 +220,7 @@ export default function Signup() {
                 Log in
               </Link>
             </div>
-            
+
             <div className="text-center text-sm text-muted-foreground">
               <Link href="/" className="hover:underline hover:text-foreground cursor-pointer">
                 ← Back to home
