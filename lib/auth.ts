@@ -17,6 +17,7 @@ export async function authorizeUser(credentials: any) {
         if (!isValid) throw new Error("Invalid password");
 
         return {
+          // @ts-ignore
           id: user._id.toString(),
           name: `${doubleDecrypt(user.first_Name)} ${doubleDecrypt(user.last_Name)}`,
           email: decryptedEmail,

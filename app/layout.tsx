@@ -1,6 +1,14 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import AppProviders from './providers';
+import { Raleway } from 'next/font/google';
+
+// Load Raleway font
+const raleway = Raleway({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'], // Add weights as needed
+  variable: '--font-raleway', // Optional: for CSS variable usage
+});
 
 export const metadata: Metadata = {
   title: 'Vidal Sign',
@@ -16,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={raleway.className} suppressHydrationWarning>
       <head />
       <body suppressHydrationWarning>
         <AppProviders>

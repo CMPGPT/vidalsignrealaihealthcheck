@@ -11,6 +11,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import isEmail from 'validator/lib/isEmail';
+import { Poppins } from 'next/font/google';
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-poppins',
+});
 
 export default function ForgotPassword() {
   const router = useRouter();
@@ -170,7 +177,7 @@ export default function ForgotPassword() {
 
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+    <div className={`flex min-h-screen flex-col items-center justify-center bg-background p-4 ${poppins.className}`}>
       <div className="absolute top-6 left-8">
         <Link href="/" className="inline-block text-2xl font-bold text-primary hover:opacity-80 transition-opacity">
           VidalSigns

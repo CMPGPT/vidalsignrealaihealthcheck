@@ -16,9 +16,7 @@ const nextConfig = {
         ? { properties: ['^bis_skin_checked$'] }
         : false,
   },
-
-  // 👇 Middleware matcher for protecting specific routes
-  matcher: ['/partners/:path*', '/chat/:path*'],
+  // Removed matcher from here
 };
 
 module.exports = nextConfig;

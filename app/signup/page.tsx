@@ -9,6 +9,13 @@ import { Separator } from '@/components/ui/separator';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import isEmail from 'validator/lib/isEmail';
 import Swal from 'sweetalert2'
+import { Poppins, Raleway } from 'next/font/google';
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-poppins',
+});
 
 const usStates = [
   { value: 'AL', label: 'Alabama' },
@@ -77,8 +84,8 @@ export default function Signup() {
     password: '',
     website_link: '',
   });
-
-  const handleChange = async(e) => {
+  // @ts-ignore
+  const handleChange = async (e) => {
     const { id, value } = e.target;
     setFormData({ ...formData, [id]: value });
 
@@ -132,6 +139,7 @@ export default function Signup() {
     } catch (err) {
       Swal.fire({
         title: 'Error!',
+        // @ts-ignore
         text: err.message || 'Something went wrong',
         icon: 'error',
         confirmButtonText: 'Try Again',
@@ -149,6 +157,7 @@ export default function Signup() {
   const [isEmailTaken, setIsEmailTaken] = useState(false);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
+  // @ts-ignore
   function getPasswordStrength(password) {
     const strength = {
       length: password.length >= 8,
@@ -169,7 +178,7 @@ export default function Signup() {
   });
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 min-h-screen">
+    <div className={`grid grid-cols-1 md:grid-cols-2 min-h-screen ${poppins.className}`}>
       <div className="flex flex-col justify-center items-center px-8 py-8 md:px-12 md:py-12 lg:px-16 lg:py-16">
         <div className="absolute top-6 left-8 md:left-12 lg:left-16">
           <Link href="/" className="inline-block text-2xl font-bold text-primary hover:opacity-80 transition-opacity">
@@ -355,13 +364,12 @@ export default function Signup() {
               <button
                 onClick={handleSignup}
                 disabled={!isTermsAccepted || isLoading}
-                className={`w-full rounded-md h-10 px-4 font-medium shadow-sm transition-colors ${
-                  isTermsAccepted && !isLoading
+                className={`w-full rounded-md h-10 px-4 font-medium shadow-sm transition-colors ${isTermsAccepted && !isLoading
                     ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                     : isLoading
-                    ? 'bg-primary/70 text-primary-foreground cursor-wait'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                      ? 'bg-primary/70 text-primary-foreground cursor-wait'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center">

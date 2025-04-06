@@ -5,6 +5,7 @@ import PartnerOverview from "@/components/partners/PartnerOverview";
 import { useSearchParams } from "next/navigation";
 import { useSession, signOut } from 'next-auth/react';
 
+
 function PartnerDashboardContent() {
   const searchParams = useSearchParams();
   // Default partner ID - in a real app, this would come from authentication context

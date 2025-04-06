@@ -9,6 +9,16 @@ import QRPurchaseModal from "@/components/partners/QRPurchaseModal";
 // Import centralized data
 import { partnerMetricsData, qrActivityData, customers } from "@/data/mock/partnerUsers";
 
+import { Raleway } from "next/font/google";
+
+
+const raleway = Raleway({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'], // Add weights as needed
+  variable: '--font-raleway', // Optional: for CSS variable usage
+});
+
+
 interface PartnerOverviewProps {
   openModalByDefault?: boolean;
   partnerId?: string;
@@ -50,7 +60,7 @@ const PartnerOverview = ({ openModalByDefault = false, partnerId = DEFAULT_PARTN
   };
 
   return (
-    <div className="space-y-6">
+    <div className={`space-y-6 ${raleway.className}`}>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">

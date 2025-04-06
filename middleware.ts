@@ -18,3 +18,8 @@ export async function middleware(req: NextRequest) {
 
   return NextResponse.next();
 }
+
+// Add this export to define the matcher
+export const config = {
+  matcher: ['/partners/:path*', '/chat/:path*'],
+};

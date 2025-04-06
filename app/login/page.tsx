@@ -7,6 +7,13 @@ import AuthCarousel from '@/components/auth/AuthCarousel';
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff } from 'lucide-react';
 import { signIn } from 'next-auth/react';
+import { Poppins, Raleway } from 'next/font/google';
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-poppins',
+});
 
 export default function Login() {
   const router = useRouter();
@@ -30,6 +37,8 @@ export default function Login() {
 
     setLoading(false);
 
+    console.log(result)
+
     if (result?.ok) {
       router.push('/partners'); // Change as needed
     } else {
@@ -38,7 +47,7 @@ export default function Login() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 min-h-screen">
+    <div className={`grid grid-cols-1 md:grid-cols-2 min-h-screen ${poppins.className}`}>
       <div className="flex flex-col justify-center items-center px-8 py-8 md:px-12 md:py-12 lg:px-16 lg:py-16">
         <div className="absolute top-6 left-8 md:left-12 lg:left-16">
           <Link href="/" className="inline-block text-2xl font-bold text-primary hover:opacity-80 transition-opacity">
