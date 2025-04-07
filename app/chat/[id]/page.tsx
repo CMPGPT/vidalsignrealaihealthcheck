@@ -5,13 +5,13 @@ import Header from "@/components/chat/Header";
 import ReportSummary from "@/components/chat/ReportSummary";
 import ChatInterface from "@/components/chat/ChatInterface";
 import { Toaster } from "@/components/ui/sonner";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { UploadCloud } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useParams } from "next/navigation";
 import React from 'react';
 import { Poppins } from "next/font/google";
+import { UploadButton } from "@/components/upload/UploadButton";
 
 interface ReportData {
   id: string;
@@ -19,11 +19,13 @@ interface ReportData {
   date: string;
   summary: string;
   expiryTime: Date;
+  suggestedQuestions?: string[];
+  recommendationQuestions?: string[];
 }
 
 const poppins = Poppins({
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'], // You can add more weights if needed
+  weight: ['400', '500', '600', '700'],
   variable: '--font-poppins',
 });
 
@@ -34,12 +36,11 @@ export default function Page() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [report, setReport] = useState<ReportData | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const [suggestedQuestions, setSuggestedQuestions] = useState([
-  ]);
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
 
   const handleAskQuestion = (question: string) => {
     console.log("Question asked:", question);
+    // Implement your chat functionality here
   };
 
   const handleDeleteReport = () => {
@@ -49,13 +50,12 @@ export default function Page() {
     });
   };
 
-  // ✅ Load report on first load
+  // Load report on first load
   useEffect(() => {
     const getExistingReport = async () => {
       if (!chatId) return;
 
       try {
-        // Send the chatId to the backend via POST request
         const res = await fetch('/api/findReport', {
           method: 'POST',
           headers: {
@@ -71,6 +71,10 @@ export default function Page() {
             ...data.report,
             expiryTime: new Date(data.report.expiryTime),
           });
+          
+          if (data.report.suggestedQuestions) {
+            setSuggestedQuestions(data.report.suggestedQuestions);
+          }
         }
       } catch (err) {
         console.error("Failed to load existing report:", err);
@@ -80,36 +84,23 @@ export default function Page() {
     getExistingReport();
   }, [chatId]);
 
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  const handleUploadComplete = async (data: { fileUrl: string; fileType: string; fileName: string }) => {
     setError(null);
     setIsProcessing(true);
 
     try {
-      const fileType = file.type;
-      const isValidFileType =
-        fileType === 'application/pdf' ||
-        fileType === 'image/jpeg' ||
-        fileType === 'image/png';
-
-      if (!isValidFileType) {
-        throw new Error('Please upload a PDF or image (JPEG/PNG).');
-      }
-
-      if (file.size > 10 * 1024 * 1024) {
-        throw new Error('File too large. Maximum size is 10MB.');
-      }
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('chatId', chatId);
-
+      // Send the file data to our API for processing with OpenAI
       const response = await fetch('/api/reportsummary', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileUrl: data.fileUrl,
+          fileType: data.fileType,
+          fileName: data.fileName,
+          chatId,
+        }),
       });
 
       if (!response.ok) {
@@ -124,18 +115,21 @@ export default function Page() {
         expiryTime: new Date(reportData.expiryTime),
       });
 
+      if (reportData.suggestedQuestions) {
+        setSuggestedQuestions(reportData.suggestedQuestions);
+      }
+
       toast.success("Analysis complete", {
         description: "Your medical report has been analyzed successfully.",
       });
     } catch (err: any) {
-      console.error('Upload error:', err);
+      console.error('Analysis error:', err);
       setError(err.message || 'An error occurred during file processing');
-      toast.error("Upload failed", {
+      toast.error("Analysis failed", {
         description: err.message || 'Failed to analyze the document',
       });
     } finally {
       setIsProcessing(false);
-      event.target.value = '';
     }
   };
 
@@ -172,25 +166,24 @@ export default function Page() {
                       Upload your medical document and our AI will analyze it and provide you with a summary and insights.
                     </p>
                     <div className="pt-4">
-                      <Button
-                        className="relative overflow-hidden"
-                        size="lg"
-                      >
-                        <input
-                          type="file"
-                          className="absolute inset-0 cursor-pointer opacity-0"
-                          accept=".pdf,.jpg,.jpeg,.png"
-                          onChange={handleFileUpload}
-                        />
-                        <UploadCloud className="h-4 w-4 mr-2" />
-                        Upload Document
-                      </Button>
+                      <UploadButton
+                        chatId={chatId || "default-chat-id"}
+                        onUploadComplete={handleUploadComplete}
+                        onUploadError={(err) => {
+                          console.error("Upload error:", err);
+                          setError(err.message);
+                        }}
+                        onUploadStart={() => {
+                          console.log("Upload starting with chatId:", chatId);
+                          setError(null);
+                        }}
+                      />
                     </div>
                     {error && (
                       <p className="text-sm text-destructive mt-2">{error}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      Supported formats: PDF, JPEG, PNG (Max: 10MB)
+                      Supported formats: PDF, JPEG, PNG (Max: 8MB)
                     </p>
                   </div>
                 </CardContent>

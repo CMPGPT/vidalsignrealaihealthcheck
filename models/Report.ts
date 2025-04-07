@@ -1,53 +1,32 @@
-// File: models/Report.ts
-import mongoose, { Schema, Document, models, model } from "mongoose";
+// models/Report.ts
+import mongoose, { Schema, model, models } from 'mongoose';
 
-export interface IReport extends Document {
-  chatId: string;
-  title: string;
-  date: string;
-  summary: string;
-  suggestedQuestions: string[];
-  recommendationQuestions: string[];
-  expiryTime: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-const ReportSchema = new Schema<IReport>(
-  {
-    chatId: {
-      type: String,
-      required: true,
-    },
-    title: {
-      type: String,
-      required: true,
-    },
-    date: {
-      type: String,
-      required: true,
-    },
-    summary: {
-      type: String,
-      required: true,
-    },
-    suggestedQuestions: {
-      type: [String],
-      default: [],
-    },
-    recommendationQuestions: {
-      type: [String],
-      default: [],
-    },
-    expiryTime: {
-      type: Date,
-      required: true,
-    },
+const ReportSchema = new Schema({
+  chatId: { 
+    type: String, 
+    required: true, 
+    index: true 
   },
-  {
-    timestamps: true, // automatically adds createdAt and updatedAt
-  }
-);
+  fileUrl: { 
+    type: String, 
+    required: true 
+  },
+  title: String,
+  date: String,
+  summary: String,
+  suggestedQuestions: [String],
+  recommendationQuestions: [String],
+  expiryTime: { 
+    type: Date, 
+    required: true 
+  },
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
+  },
+});
 
-// Avoid re-compilation in dev mode (Next.js hot reload)
-export const Report = models.Report || model<IReport>("Report", ReportSchema);
+// Add TTL index on expiryTime
+ReportSchema.index({ expiryTime: 1 }, { expireAfterSeconds: 0 });
+
+export const Report = models.Report || model('Report', ReportSchema);

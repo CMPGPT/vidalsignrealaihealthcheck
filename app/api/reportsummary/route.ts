@@ -1,60 +1,39 @@
-// File: app/api/reportsummary/route.ts
-
+// app/api/reportsummary/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { writeFile } from 'fs/promises';
-import path from 'path';
-import { promises as fs } from 'fs';
-import { fromPath } from 'pdf2pic';
 import dbConnect from '@/lib/dbConnect';
 import { Report } from '@/models/Report';
+import axios from 'axios';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-const uploadDir = path.join(process.cwd(), 'tmp/uploads');
-const convertedDir = path.join(uploadDir, 'converted');
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
 
-async function analyzeDocument(filePath: string, mimeType: string): Promise<{
+async function analyzeDocument(fileUrl: string, fileType: string): Promise<{
   summary: string;
   suggestedQuestions: string[];
   recommendationQuestions: string[];
 }> {
   try {
-    let imagePaths: string[] = [];
-
-    if (mimeType === 'application/pdf') {
-      await fs.mkdir(convertedDir, { recursive: true });
-
-      const converter = fromPath(filePath, {
-        density: 150,
-        savePath: convertedDir,
-        saveFilename: path.basename(filePath, path.extname(filePath)),
-        format: 'jpeg',
-        width: 1024,
-        height: 1024,
-      });
-
-      const result = await converter(1);
-      // @ts-ignore
-      imagePaths = [result.path];
-    } else {
-      imagePaths = [filePath];
-    }
-
-    const imageMessages = await Promise.all(
-      imagePaths.map(async (imgPath) => {
-        const base64 = await fs.readFile(imgPath, { encoding: 'base64' });
-        return {
-          type: 'image_url',
-          image_url: {
-            url: `data:image/jpeg;base64,${base64}`,
-          },
-        };
-      })
-    );
+    // Download the file to a buffer
+    const { data } = await axios.get(fileUrl, {
+      responseType: 'arraybuffer'
+    });
+    
+    // Convert buffer to base64
+    const base64 = Buffer.from(data).toString('base64');
+    
+    // Determine MIME type for the base64 image URL
+    const mimeType = fileType === 'application/pdf' ? 'application/pdf' : 
+                     fileType === 'image/png' ? 'image/png' : 'image/jpeg';
+    
+    // Create the image message
+    const imageMessage = {
+      type: 'image_url',
+      image_url: {
+        url: `data:${mimeType};base64,${base64}`,
+      },
+    };
 
     // First request: Get the report summary
     const summaryResponse = await openai.chat.completions.create({
@@ -87,7 +66,7 @@ Use double asterisks **bold** for important values.`,
           content: [
             { type: 'text', text: 'Please analyze this medical document and extract the relevant medical information:' },
             // @ts-ignore
-            ...imageMessages,
+            imageMessage,
           ],
         },
       ],
@@ -144,9 +123,6 @@ Example:
     console.log('Generated suggested questions:', suggestedQuestions);
     console.log('Generated recommendation questions:', recommendationQuestions);
 
-    // Cleanup temp image files
-    await Promise.all(imagePaths.map((imgPath) => fs.unlink(imgPath).catch(() => {})));
-
     return {
       summary,
       suggestedQuestions,
@@ -160,50 +136,32 @@ Example:
 
 export async function POST(request: NextRequest) {
   try {
-    await fs.mkdir(uploadDir, { recursive: true });
+    const data = await request.json();
+    const { fileUrl, fileType, fileName, chatId } = data;
 
-    const formData = await request.formData();
-    const file = formData.get('file') as File;
-    const chatId = formData.get('chatId') as string;
-
-    if (!file) {
-      return NextResponse.json({ error: 'No file uploaded.' }, { status: 400 });
+    if (!fileUrl) {
+      return NextResponse.json({ error: 'No file URL provided.' }, { status: 400 });
     }
 
     if (!chatId) {
       return NextResponse.json({ error: 'Missing chat ID.' }, { status: 400 });
     }
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    if (!ALLOWED_TYPES.includes(fileType)) {
       return NextResponse.json(
-        { error: `Unsupported file type: ${file.type}. Upload PDF, JPEG, or PNG only.` },
+        { error: `Unsupported file type: ${fileType}. Upload PDF, JPEG, or PNG only.` },
         { status: 400 }
       );
     }
-
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        { error: 'File too large. Max size is 10MB.' },
-        { status: 400 }
-      );
-    }
-
-    const timestamp = Date.now();
-    const ext = path.extname(file.name);
-    const fileName = `${timestamp}${ext}`;
-    const filePath = path.join(uploadDir, fileName);
-
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filePath, buffer);
 
     try {
-      console.log(`Processing file: ${file.name}, Type: ${file.type}, Size: ${file.size} bytes`);
+      console.log(`Processing file: ${fileName}, Type: ${fileType}, URL: ${fileUrl}`);
 
-      const { summary, suggestedQuestions, recommendationQuestions } = await analyzeDocument(filePath, file.type);
+      const { summary, suggestedQuestions, recommendationQuestions } = await analyzeDocument(fileUrl, fileType);
 
       const report = {
         id: `REP-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
-        title: path.basename(file.name, ext),
+        title: fileName.split('.').slice(0, -1).join('.'), // Remove file extension
         date: new Date().toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'long',
@@ -219,6 +177,7 @@ export async function POST(request: NextRequest) {
       await dbConnect();
       await Report.create({
         chatId,
+        fileUrl, // Save the UploadThing URL
         title: report.title,
         date: report.date,
         summary: report.summary,
@@ -228,9 +187,11 @@ export async function POST(request: NextRequest) {
       });
 
       return NextResponse.json(report);
-    } finally {
-      await fs.unlink(filePath).catch((err) =>
-        console.error('Failed to delete uploaded file:', err)
+    } catch (error: any) {
+      console.error('Error in analysis process:', error);
+      return NextResponse.json(
+        { error: 'Analysis failed', detail: error.message },
+        { status: 500 }
       );
     }
   } catch (error: any) {
