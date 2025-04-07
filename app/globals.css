@@ -514,3 +514,98 @@
   background-color: hsl(var(--destructive) / 0.1);
   border-left: 3px solid hsl(var(--destructive));
 }
+
+/* Add these CSS styles to your global CSS file */
+
+/* Fix for formatted messages */
+.formatted-message {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+.formatted-message ol,
+.formatted-message ul {
+  padding-left: 1.5rem;
+}
+
+.formatted-message li {
+  margin-bottom: 0.5rem;
+}
+
+.formatted-message p {
+  margin-bottom: 0.75rem;
+}
+
+/* Ensure long text wraps properly in all message types */
+.message-content {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+  max-width: 100%;
+}
+
+/* Styling for custom lists */
+.message-content .numbered-item {
+  display: flex;
+  margin-bottom: 0.75rem;
+}
+
+.message-content .numbered-item .number {
+  font-weight: bold;
+  margin-right: 0.5rem;
+  min-width: 1.5rem;
+}
+
+.message-content .numbered-item .content {
+  flex: 1;
+}
+
+/* Make sure the report button doesn't obscure content */
+.report-button {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  z-index: 50;
+  border-radius: 9999px;
+  width: 3rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Ensure the questions section is visible */
+.questions-section {
+  background-color: hsl(var(--card));
+  border-top: 1px solid hsl(var(--border));
+  position: relative;
+  z-index: 10;
+}
+
+/* Make sure the chat input stays at the bottom */
+.input-footer {
+  background-color: hsl(var(--card));
+  border-top: 1px solid hsl(var(--border));
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  padding: 0.5rem;
+  margin-top: auto;
+}
+
+/* Ensure code blocks don't overflow */
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+/* Fix element highlighting */
+strong.text-primary {
+  color: hsl(var(--primary));
+  font-weight: 700;
+}

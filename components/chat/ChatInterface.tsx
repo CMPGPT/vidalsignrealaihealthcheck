@@ -101,14 +101,14 @@ const MessageContent = ({ content, isFormatted }: { content: string; isFormatted
   if (isFormatted || shouldAutoFormat(content)) {
     return (
       <div 
-        className="text-sm message-content"
+        className="text-sm message-content overflow-hidden overflow-wrap-break-word"
         dangerouslySetInnerHTML={{ __html: formattedContent }} 
       />
     );
   }
   
   // For regular text messages
-  return <div className="text-sm whitespace-pre-wrap">{content}</div>;
+  return <div className="text-sm whitespace-pre-wrap overflow-wrap-break-word">{content}</div>;
 };
 
 const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestions = [], onAskQuestion, report: initialReport }: ChatInterfaceProps) => {
@@ -289,82 +289,6 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
     }, 300);
   };
 
-  // This is a predefined response for demonstration purposes
-  const handleTestFormattedResponse = () => {
-    const formattedResponse = `
-      <h1 class="text-lg font-bold mb-3">Low Hemoglobin Levels</h1>
-      <p class="mb-3">Low hemoglobin levels can be caused by a variety of factors, including:</p>
-      <ol class="list-decimal pl-5 mb-3">
-        <li class="mb-2">
-          <strong class="text-primary">Nutritional Deficiencies:</strong> 
-          <p>Iron deficiency is the most common cause of anemia, leading to insufficient hemoglobin production. Vitamin B12 or folate deficiency can also affect red blood cell production and hemoglobin levels.</p>
-        </li>
-        <li class="mb-2">
-          <strong class="text-primary">Chronic Diseases:</strong> 
-          <p>Conditions such as chronic kidney disease, cancer, or inflammatory diseases can interfere with red blood cell production.</p>
-        </li>
-        <li class="mb-2">
-          <strong class="text-primary">Blood Loss:</strong> 
-          <p>Acute or chronic blood loss from injuries, surgery, gastrointestinal bleeding, or heavy menstrual periods can lead to low hemoglobin levels.</p>
-        </li>
-        <li class="mb-2">
-          <strong class="text-primary">Bone Marrow Disorders:</strong> 
-          <p>Disorders like aplastic anemia or leukemia can affect the bone marrow's ability to produce red blood cells.</p>
-        </li>
-        <li class="mb-2">
-          <strong class="text-primary">Hemolytic Anemia:</strong> 
-          <p>Conditions where red blood cells are destroyed faster than they can be produced, such as autoimmune hemolytic anemia or sickle cell anemia.</p>
-        </li>
-        <li class="mb-2">
-          <strong class="text-primary">Genetic Disorders:</strong> 
-          <p>Conditions like thalassemia can lead to abnormal hemoglobin production.</p>
-        </li>
-      </ol>
-      <p class="mt-3 text-primary-foreground bg-primary/10 p-3 rounded-md">It is important to consult with a healthcare provider to determine the specific cause of low hemoglobin levels and develop an appropriate treatment plan.</p>
-    `;
-
-    // Add formatted AI response to chat
-    const newBotMessage: Message = {
-      id: messages.length + 2,
-      content: formattedResponse,
-      sender: "bot",
-      timestamp: new Date(),
-      isFormatted: true,
-    };
-
-    setMessages((prev) => [...prev, newBotMessage]);
-  };
-
-  // Example of handling text with ** markers
-  const handleTestStarFormatting = () => {
-    const textWithStars = `Low hemoglobin levels can be caused by a variety of factors and underlying conditions. Some common causes include:
-
-1. **Nutritional Deficiencies:**
-- Iron deficiency, which is the most common cause of anemia.
-- Vitamin B12 or folate deficiency.
-
-2. **Chronic Diseases:**
-- Chronic kidney disease.
-- Chronic inflammatory conditions such as rheumatoid arthritis.
-
-3. **Blood Loss:**
-- Acute or chronic bleeding, such as from gastrointestinal ulcers or heavy menstrual periods.
-
-4. **Bone Marrow Disorders:**
-- Conditions that affect the bone marrow's ability to produce red blood cells.`;
-
-    // Add response with ** formatting that will be auto-detected
-    const newBotMessage: Message = {
-      id: messages.length + 2,
-      content: textWithStars,
-      sender: "bot",
-      timestamp: new Date(),
-      // No need to set isFormatted, the component will detect it
-    };
-
-    setMessages((prev) => [...prev, newBotMessage]);
-  };
-
   // Get filtered suggested questions (remove already asked questions)
   const getFilteredSuggestedQuestions = () => {
     const reportQuestions = report?.suggestedQuestions || [];
@@ -377,24 +301,41 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
 
   return (
     <Card className={cn("flex flex-col h-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300", className)}>
-      <CardHeader className="flex flex-row items-center justify-between py-3 px-4 space-y-0">
+      {/* Header - 7% height */}
+      <CardHeader className="flex flex-row items-center justify-between py-2 px-4 space-y-0 h-[7%] min-h-[50px]">
         <div className="flex items-center space-x-2">
           <Avatar className="h-8 w-8 bg-primary/10 flex justify-center items-center">
             <Bot className="h-4 w-4 text-primary" />
           </Avatar>
           <h3 className="font-medium">Medical Assistant</h3>
         </div>
+        
+        {/* Mobile Report Button */}
+        {report && (
+          <Button 
+            variant="secondary"
+            size="sm"
+            className="lg:hidden rounded-full bg-primary text-primary-foreground h-10 w-10 p-0"
+            aria-label="View Report"
+            onClick={() => window.dispatchEvent(new CustomEvent('toggleSidebar'))}
+          >
+            <span className="text-[10px] font-medium">Report</span>
+          </Button>
+        )}
       </CardHeader>
+      
       <Separator />
+      
+      {/* Messages Area - Auto expanding to fill available space */}
       <CardContent 
         ref={messageContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4"
+        className="flex-1 overflow-y-auto p-4 space-y-4 h-[80%]"
       >
         {messages.map((message) => (
           <div
             key={message.id}
             className={cn(
-              "flex w-max max-w-[85%]",
+              "flex max-w-[85%]",
               messageAnimation ? "animate-message-in" : "",
               message.sender === "user" 
                 ? "ml-auto justify-end" 
@@ -406,7 +347,7 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
           >
             <div
               className={cn(
-                "rounded-lg px-4 py-3 shadow-subtle",
+                "rounded-lg px-4 py-3 shadow-subtle overflow-hidden",
                 message.sender === "user"
                   ? "bg-primary text-primary-foreground"
                   : message.isFormatted
@@ -419,7 +360,7 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
           </div>
         ))}
         {isTyping && (
-          <div className="flex w-max max-w-[80%] mr-auto animate-fade-in">
+          <div className="flex max-w-[80%] mr-auto animate-fade-in">
             <div className="rounded-lg px-4 py-2 bg-secondary text-secondary-foreground shadow-subtle">
               <div className="flex space-x-1">
                 <span className="animate-pulse">•</span>
@@ -432,17 +373,17 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
         <div ref={messagesEndRef} />
       </CardContent>
       
-      {/* Suggested Questions Section - Only shown if there are filtered questions */}
+      {/* Suggested Questions Section - Absolute positioning */}
       {filteredQuestions.length > 0 && (
-        <div className="px-4 py-2">
+        <div className="w-full bg-card border-t relative z-20 px-4 py-2">
           <div className="text-sm mb-2 font-semibold text-muted-foreground">💡 Suggested Questions</div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col space-y-2 sm:flex-row sm:flex-wrap sm:space-y-0 sm:gap-2 pb-2">
             {filteredQuestions.map((question, index) => (
               <Button
                 key={index}
                 variant="secondary"
                 size="sm"
-                className="text-xs opacity-0 animate-fade-in-up"
+                className="text-xs w-full sm:w-auto opacity-0 animate-fade-in-up text-left justify-start sm:justify-center whitespace-normal h-auto py-2"
                 style={{
                   animationDelay: `${index * 100}ms`,
                   animationFillMode: "forwards",
@@ -450,15 +391,15 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
                 aria-label={`Suggested Question ${index + 1}`}
                 onClick={() => handleSuggestedQuestion(question)}
               >
-                {question}
+                <span className="line-clamp-2">{question}</span>
               </Button>
             ))}
           </div>
         </div>
       )}
       
-      <Separator />
-      <CardFooter className="p-2">
+      {/* Input Area - 6% height */}
+      <CardFooter className="p-2 border-t mt-auto bg-card z-30 h-[6%] min-h-[50px]">
         <form
           className="flex w-full items-center space-x-2"
           onSubmit={(e) => {
