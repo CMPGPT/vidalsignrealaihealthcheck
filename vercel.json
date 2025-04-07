@@ -1,6 +1,17 @@
 {
+  "version": 2,
   "buildCommand": "npm run build",
   "framework": "nextjs",
   "installCommand": "npm install --legacy-peer-deps",
-  "outputDirectory": ".next"
-} 
+  "outputDirectory": ".next",
+  "functions": {
+    "app/api/reportsummary/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    },
+    "app/api/uploadthing/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  }
+}
