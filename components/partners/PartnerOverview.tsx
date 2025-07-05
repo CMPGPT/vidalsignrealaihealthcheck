@@ -195,7 +195,6 @@ const PartnerOverview = ({ openModalByDefault = false, partnerId = DEFAULT_PARTN
       <QRPurchaseModal 
         isOpen={isPurchaseOpen} 
         onClose={() => setIsPurchaseOpen(false)}
-        onPurchase={handlePurchase}
       />
     </div>
   );

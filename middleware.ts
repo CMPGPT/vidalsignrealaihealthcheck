@@ -4,8 +4,14 @@ import { getToken } from 'next-auth/jwt';
 import type { NextRequest } from 'next/server';
 
 const protectedRoutes = ['/partners'];
+const publicApiRoutes = ['/api/stripe/webhook'];
 
 export async function middleware(req: NextRequest) {
+  // Skip middleware for Stripe webhook routes
+  if (publicApiRoutes.some(route => req.nextUrl.pathname.startsWith(route))) {
+    return NextResponse.next();
+  }
+
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
   const isProtected = protectedRoutes.some((route) =>
@@ -21,5 +27,5 @@ export async function middleware(req: NextRequest) {
 
 // Add this export to define the matcher
 export const config = {
-  matcher: ['/partners/:path*', '/chat/:path*'],
+  matcher: ['/chat/:path*', '/partners', '/partners/:path*', '/api/stripe/webhook'],
 };

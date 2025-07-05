@@ -15,14 +15,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 // Import centralized data
 import { qrPackages } from "@/data/mock/partnerUsers";
+import { useSession } from "next-auth/react";
 
 interface QRPurchaseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onPurchase?: (packageName: string | null, count: number, price: number) => void;
 }
 
-const QRPurchaseModal = ({ isOpen, onClose, onPurchase }: QRPurchaseModalProps) => {
+const QRPurchaseModal = ({ isOpen, onClose }: QRPurchaseModalProps) => {
+  const { data: session } = useSession();
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [customQrCount, setCustomQrCount] = useState(100);
   const [activeTab, setActiveTab] = useState("packages");
@@ -195,15 +196,52 @@ const QRPurchaseModal = ({ isOpen, onClose, onPurchase }: QRPurchaseModalProps) 
     setCustomQrCount(prev => Math.max(50, prev - 50));
   };
 
-  const handlePurchase = () => {
-    if (onPurchase) {
-      onPurchase(
-        selectedPackage, 
-        activeTab === "custom" ? customQrCount : qrPackages.find(p => p.name === selectedPackage)?.count || 0,
-        parseFloat(calculatePrice())
-      );
+  const handlePurchase = async () => {
+    const pack = activeTab === "custom"
+      ? { name: "Custom", count: customQrCount, price: parseFloat(calculatePrice()) }
+      : qrPackages.find(p => p.name === selectedPackage);
+
+    if (!pack) {
+      alert("Please select a package");
+      return;
     }
-    onClose();
+
+    // Use a default partnerId if session is not available
+    // In production, you should require login, but this helps with testing
+    const partnerId = session?.user ? (session.user as any).unique_id || "P-001" : "P-001";
+
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          packageName: pack.name,
+          count: pack.count,
+          price: pack.price,
+          partnerId: partnerId,
+          metadata: {
+            partnerId: partnerId,
+            count: pack.count.toString(),
+            packageName: pack.name
+          }
+        }),
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Stripe checkout failed');
+      }
+      
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('Stripe checkout URL not found');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert(`Checkout failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   // Function to calculate optimal grid columns based on window size

@@ -16,7 +16,20 @@ const nextConfig = {
         ? { properties: ['^bis_skin_checked$'] }
         : false,
   },
-  // Removed matcher from here
+  // Stripe webhook configuration
+  async headers() {
+    return [
+      {
+        source: '/api/stripe/webhook',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/json',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
