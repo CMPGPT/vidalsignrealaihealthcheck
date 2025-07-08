@@ -12,10 +12,18 @@ function PartnerDashboardContent() {
   const partnerId = "P-001";
   const { data: session, status } = useSession();
 
-  console.log(session)
+  console.log('🔍 PARTNERS PAGE DEBUG: ========== Partners Page Loaded ==========');
+  console.log('🔍 PARTNERS PAGE DEBUG: Session status:', status);
+  console.log('🔍 PARTNERS PAGE DEBUG: Session data:', session);
   
   return (
     <div>
+      <div className="mb-4 p-4 bg-green-100 border border-green-300 rounded">
+        <h2 className="font-bold text-green-800">🎉 SUCCESS! You've reached the Partners page!</h2>
+        <p className="text-green-700">Login and redirect working correctly.</p>
+        <p className="text-sm text-green-600">Session status: {status}</p>
+        <p className="text-sm text-green-600">User email: {session?.user?.email || 'Not available'}</p>
+      </div>
      { /*  <h2 className="text-xl font-semibold mb-6">Overview</h2> */}
       <PartnerOverview 
         openModalByDefault={searchParams.get("openModal") === "true"} 

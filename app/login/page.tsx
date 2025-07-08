@@ -25,24 +25,84 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
+    console.log('🔍 LOGIN DEBUG: ========== Form Submit Event ==========');
+    console.log('🔍 LOGIN DEBUG: Event type:', e.type);
+    console.log('🔍 LOGIN DEBUG: Preventing default...');
+    
     e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🔍 LOGIN DEBUG: Default prevented, starting login process');
+    
+    if (loading) {
+      console.log('⚠️ LOGIN DEBUG: Already loading, ignoring submission');
+      return;
+    }
+
+    // Validate inputs
+    if (!email.trim()) {
+      console.log('❌ LOGIN DEBUG: Email is empty');
+      setError('Please enter your email address');
+      return;
+    }
+
+    if (!password.trim()) {
+      console.log('❌ LOGIN DEBUG: Password is empty');
+      setError('Please enter your password');
+      return;
+    }
+
+    console.log('✅ LOGIN DEBUG: Validation passed');
     setLoading(true);
     setError('');
 
-    const result = await signIn('credentials', {
-      redirect: false,
-      email,
-      password,
-    });
+    try {
+      console.log('🔍 LOGIN DEBUG: Email:', email);
+      console.log('🔍 LOGIN DEBUG: Password length:', password.length);
+      console.log('🔍 LOGIN DEBUG: Password first 3 chars:', password.substring(0, 3) + '...');
 
-    setLoading(false);
+      console.log('🔍 LOGIN DEBUG: Calling signIn...');
+      const result = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
+      });
 
-    console.log(result)
+      console.log('🔍 LOGIN DEBUG: SignIn completed');
+      console.log('🔍 LOGIN DEBUG: Result.ok:', result?.ok);
+      console.log('🔍 LOGIN DEBUG: Result.error:', result?.error);
+      console.log('🔍 LOGIN DEBUG: Result.status:', result?.status);
 
-    if (result?.ok) {
-      router.push('/partners'); // Change as needed
-    } else {
-      setError('Invalid email or password');
+      if (result?.ok) {
+        console.log('✅ LOGIN DEBUG: Login successful! Redirecting to /partners');
+        
+        // Show success message
+        setError('Login successful! Redirecting...');
+        
+        // Force immediate redirect with window.location
+        console.log('🔍 LOGIN DEBUG: Force redirect using window.location');
+        window.location.href = '/partners';
+      } else {
+        console.log('❌ LOGIN DEBUG: Login failed');
+        console.log('❌ LOGIN DEBUG: Error details:', result?.error);
+        
+        let errorMessage = 'Login failed. ';
+        if (result?.error === 'CredentialsSignin') {
+          errorMessage += 'Invalid email or password.';
+        } else if (result?.error) {
+          errorMessage += `Error: ${result.error}`;
+        } else {
+          errorMessage += 'Please check your credentials and try again.';
+        }
+        
+        setError(errorMessage);
+      }
+    } catch (error) {
+      console.error('❌ LOGIN DEBUG: Exception during login:', error);
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      console.log('🔍 LOGIN DEBUG: Setting loading to false');
+      setLoading(false);
     }
   };
 
@@ -61,7 +121,15 @@ export default function Login() {
             <p className="text-muted-foreground">Enter your credentials to access your account</p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-6 mt-8">
+          <form 
+            onSubmit={handleLogin} 
+            className="space-y-6 mt-8"
+            noValidate
+            onInvalid={(e) => {
+              console.log('🔍 LOGIN DEBUG: Form invalid event:', e);
+              e.preventDefault();
+            }}
+          >
             {error && (
               <div className="p-3 bg-red-100 border border-red-200 text-red-600 rounded-md text-sm">
                 {error}
@@ -73,11 +141,13 @@ export default function Login() {
                 <label htmlFor="email" className="text-sm font-medium">Email</label>
                 <input
                   id="email"
-                  type="text"
+                  type="email"
                   className="input-style"
                   placeholder="example@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
                 />
               </div>
 
@@ -95,6 +165,8 @@ export default function Login() {
                   placeholder="********"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
@@ -105,7 +177,16 @@ export default function Login() {
                 </button>
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={loading}
+                onClick={(e) => {
+                  console.log('🔍 LOGIN DEBUG: Button clicked');
+                  console.log('🔍 LOGIN DEBUG: Button type:', e.currentTarget.type);
+                  // Don't prevent default here, let the form handle it
+                }}
+              >
                 {loading ? 'Logging in...' : 'Log in'}
               </Button>
             </div>

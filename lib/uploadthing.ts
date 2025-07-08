@@ -62,6 +62,53 @@ export const ourFileRouter = {
         handleError(err as Error);
       }
     }),
+    
+  // Brand logo uploader
+  brandLogoUploader: f({ image: { maxFileSize: "4MB", maxFileCount: 1 } })
+    // @ts-ignore
+    .middleware(async ({ metadata }) => {
+      try {
+        console.log("Brand logo upload middleware running with metadata:", metadata);
+        
+        // Handle different possible metadata formats
+        let userId: string;
+        
+        if (metadata && typeof metadata === 'object') {
+          if ('userId' in metadata && metadata.userId) {
+            userId = String(metadata.userId);
+          } else {
+            console.warn("No userId found in metadata for brand logo upload");
+            userId = "default-user-id";
+          }
+        } else {
+          console.warn("Metadata is not an object for brand logo upload");
+          userId = "default-user-id";
+        }
+        
+        console.log("Brand logo upload for userId:", userId);
+    
+        return { userId };
+      } catch (err) {
+        console.error("Brand logo upload middleware error:", err);
+        return { userId: "error-fallback-user-id" };
+      }
+    })
+    .onUploadComplete(async ({ metadata, file }) => {
+      try {
+        console.log("Brand logo upload complete for userId:", metadata.userId);
+        console.log("Brand logo file details:", {
+          url: file.url,
+          name: file.name,
+          size: file.size,
+          key: file.key,
+          type: file.type
+        });
+        
+        return { uploadedBy: metadata.userId, logoUrl: file.url, logoKey: file.key };
+      } catch (err) {
+        handleError(err as Error);
+      }
+    }),
 } satisfies FileRouter;
  
 export type OurFileRouter = typeof ourFileRouter;

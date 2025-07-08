@@ -16,7 +16,20 @@ const handler = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        return await authorizeUser(credentials);
+        console.log('🔍 NEXTAUTH DEBUG: ========== Authorize Called ==========');
+        console.log('🔍 NEXTAUTH DEBUG: Credentials received:', { 
+          email: credentials?.email, 
+          passwordProvided: !!credentials?.password 
+        });
+        
+        try {
+          const result = await authorizeUser(credentials);
+          console.log('✅ NEXTAUTH DEBUG: Authorization successful:', result);
+          return result;
+        } catch (error) {
+          console.error('❌ NEXTAUTH DEBUG: Authorization failed:', error);
+          return null;
+        }
       },
     }),
 
@@ -32,6 +45,10 @@ const handler = NextAuth({
   ],
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   pages: {
     signIn: "/login",
@@ -39,9 +56,15 @@ const handler = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     async signIn({ user, account, profile }) {
+      console.log('🔍 NEXTAUTH DEBUG: ========== SignIn Callback ==========');
+      console.log('🔍 NEXTAUTH DEBUG: User:', user);
+      console.log('🔍 NEXTAUTH DEBUG: Account:', account);
+      console.log('🔍 NEXTAUTH DEBUG: Profile:', profile);
+      
       await dbConnect();
       // For OAuth, ensure user exists in PartnerUser and has unique_id
       if (account?.provider === 'google' || account?.provider === 'facebook') {
+        console.log('🔍 NEXTAUTH DEBUG: OAuth login detected');
         let partnerUser = await PartnerUser.findOne({ email: user.email });
         if (!partnerUser) {
           // Create new partner user with unique_id
@@ -58,31 +81,96 @@ const handler = NextAuth({
           partnerUser.unique_id = uuidv4();
           await partnerUser.save();
         }
+      } else {
+        console.log('🔍 NEXTAUTH DEBUG: Credentials login detected');
       }
+      
+      console.log('✅ NEXTAUTH DEBUG: SignIn callback returning true');
       return true;
     },
     async jwt({ token, user }) {
+      console.log('🔍 NEXTAUTH DEBUG: ========== JWT Callback ==========');
+      console.log('🔍 NEXTAUTH DEBUG: Token:', token);
+      console.log('🔍 NEXTAUTH DEBUG: User:', user);
+      
       await dbConnect();
-      if (user && user.email) {
-        const partnerUser = await PartnerUser.findOne({ email: user.email });
+      
+      // If user object exists (first login), store the unique_id in token
+      if (user && (user as any).unique_id) {
+        console.log('🔍 NEXTAUTH DEBUG: Storing unique_id from user object:', (user as any).unique_id);
+        token.unique_id = (user as any).unique_id;
+        token.email = user.email;
+        token.name = user.name;
+      }
+      
+      // If token doesn't have unique_id but has email, try to find it in database
+      if (!token.unique_id && token.email) {
+        console.log('🔍 NEXTAUTH DEBUG: Looking for user with email:', token.email);
+        
+        // Try to find user (handle encrypted emails)
+        let partnerUser = await PartnerUser.findOne({ email: token.email });
+        
+        if (!partnerUser) {
+          console.log('🔍 NEXTAUTH DEBUG: Direct lookup failed, trying encrypted email');
+          try {
+            const { doubleEncrypt } = await import('@/lib/encryption');
+            const encryptedEmail = doubleEncrypt(token.email);
+            partnerUser = await PartnerUser.findOne({ email: encryptedEmail });
+          } catch (error) {
+            console.log('🔍 NEXTAUTH DEBUG: Encryption failed, trying to decrypt all emails');
+            // Try to find by decrypting all emails
+            const allUsers = await PartnerUser.find();
+            const { doubleDecrypt } = await import('@/lib/encryption');
+            
+            for (const potentialUser of allUsers) {
+              try {
+                const decryptedEmail = doubleDecrypt(potentialUser.email);
+                if (decryptedEmail === token.email) {
+                  partnerUser = potentialUser;
+                  break;
+                }
+              } catch (e) {
+                continue;
+              }
+            }
+          }
+        }
+        
         if (partnerUser) {
           token.unique_id = partnerUser.unique_id;
+          console.log('✅ NEXTAUTH DEBUG: Added unique_id to token:', partnerUser.unique_id);
+        } else {
+          console.log('❌ NEXTAUTH DEBUG: Could not find user in database');
         }
       }
+      
+      console.log('🔍 NEXTAUTH DEBUG: Final token:', { email: token.email, unique_id: token.unique_id });
       return token;
     },
     async session({ session, token }) {
+      console.log('🔍 NEXTAUTH DEBUG: ========== Session Callback ==========');
+      console.log('🔍 NEXTAUTH DEBUG: Session:', session);
+      console.log('🔍 NEXTAUTH DEBUG: Token:', token);
+      
       if (session.user) {
         (session.user as any).unique_id = token.unique_id;
+        console.log('✅ NEXTAUTH DEBUG: Added unique_id to session');
       }
       return session;
     },
     async redirect({ url, baseUrl }) {
-      // Always redirect to /partners after login
-      if (url.includes('/login') || url.includes('/signup') || url === baseUrl + '/') {
-        return baseUrl + '/partners';
+      console.log('🔍 NEXTAUTH DEBUG: ========== Redirect Callback ==========');
+      console.log('🔍 NEXTAUTH DEBUG: URL:', url);
+      console.log('🔍 NEXTAUTH DEBUG: Base URL:', baseUrl);
+      
+      // Don't interfere with manual redirects, let the frontend handle it
+      if (url.startsWith(baseUrl)) {
+        console.log('✅ NEXTAUTH DEBUG: Using provided URL:', url);
+        return url;
       }
-      return url.startsWith(baseUrl) ? url : baseUrl;
+      
+      console.log('✅ NEXTAUTH DEBUG: Using base URL');
+      return baseUrl;
     },
   },
 });

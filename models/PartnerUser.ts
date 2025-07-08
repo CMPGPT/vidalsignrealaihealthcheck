@@ -9,6 +9,11 @@ export interface IPartnerUser extends Document {
   email: string;
   password: string;
   website_link?: string;
+  phone?: string;
+  business_address?: string;
+  city?: string;
+  zip?: string;
+  business_type?: string;
 }
 
 const PartnerUserSchema: Schema = new Schema(
@@ -21,6 +26,11 @@ const PartnerUserSchema: Schema = new Schema(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     website_link: { type: String },
+    phone: { type: String },
+    business_address: { type: String },
+    city: { type: String },
+    zip: { type: String },
+    business_type: { type: String },
   },
   { timestamps: true }
 );
