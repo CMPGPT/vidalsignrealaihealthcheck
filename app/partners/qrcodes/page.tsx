@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Download, Eye, Trash2, Plus, History, Link, Copy, ChevronLeft, ChevronRight } from "lucide-react";
+import { MoreHorizontal, Download, Eye, Trash2, Plus, History, Link, Copy, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import QRPurchaseModal from "@/components/partners/QRPurchaseModal";
 import {
@@ -34,12 +34,16 @@ const TABS = [
   { key: 'all', label: 'All QR Codes' },
   { key: 'used', label: 'Used QR' },
   { key: 'unused', label: 'Unused QR' },
+  { key: 'sold', label: 'Sold' },
+  { key: 'unsold', label: 'Unsold' },
 ];
 
 interface Statistics {
   total: number;
   used: number;
   unused: number;
+  sold: number;
+  unsold: number;
 }
 
 interface Pagination {
@@ -59,7 +63,7 @@ export default function QRCodesPage() {
   const [qrCodes, setQrCodes] = useState([]);
   const [secureLinks, setSecureLinks] = useState([]);
   const [paymentHistory, setPaymentHistory] = useState([]);
-  const [statistics, setStatistics] = useState<Statistics>({ total: 0, used: 0, unused: 0 });
+  const [statistics, setStatistics] = useState<Statistics>({ total: 0, used: 0, unused: 0, sold: 0, unsold: 0 });
   const [pagination, setPagination] = useState<Pagination>({
     currentPage: 1,
     totalPages: 1,
@@ -76,7 +80,7 @@ export default function QRCodesPage() {
   const [selectedRow, setSelectedRow] = useState<any>(null);
 
   // Default partner ID - in a real app this would come from auth context
-  const partnerId = "P-001";
+  const partnerId = "686aa71d7848ed9baed37c7f";
 
   // Function to fetch secure links with pagination
   const fetchSecureLinks = async (page: number = 1, status: string = 'all', showLoading: boolean = true) => {
@@ -96,7 +100,7 @@ export default function QRCodesPage() {
       if (!res.ok) throw new Error(data.error || 'Failed to fetch secure links');
       
       setSecureLinks(data.secureLinks || []);
-      setStatistics(data.statistics || { total: 0, used: 0, unused: 0 });
+      setStatistics(data.statistics || { total: 0, used: 0, unused: 0, sold: 0, unsold: 0 });
       setPagination(data.pagination || {
         currentPage: 1,
         totalPages: 1,
@@ -192,7 +196,7 @@ export default function QRCodesPage() {
               });
             } else {
               toast.success(`Payment successful!`, {
-                description: `${data.count} secure links have been generated for the ${packageName} package.`,
+                description: `${data.count} QR codes have been generated for the ${packageName} package.`,
               });
             }
             
@@ -223,15 +227,25 @@ export default function QRCodesPage() {
     fetchPaymentHistory();
   }, [partnerId]);
 
+  // Auto-refresh every 30 seconds to get real-time updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchSecureLinks(1, activeTab, false); // Don't show loading for auto-refresh
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [activeTab]);
+
   // Only show SecureLinks in the table
   const combinedRows = secureLinks.map((link: any) => ({
     type: 'SecureLink',
     id: link.linkId,
-    customerName: '',
+    customerName: link.metadata?.customerEmail || '',
     assignedDate: link.createdAt,
-    status: link.isUsed ? 'Used' : 'Not Used',
+    status: link.isUsed ? 'Used' : (link.metadata?.sold ? 'Sold' : 'Not Used'),
     redeemed: link.isUsed,
     scanned: false,
+    sold: link.metadata?.sold || false,
   }));
 
   const handlePurchase = (packageName: string | null, count: number, price: number) => {
@@ -337,6 +351,18 @@ export default function QRCodesPage() {
             <span className="text-muted-foreground text-xs">Unused QR Codes</span>
           </CardContent>
         </Card>
+        <Card className="flex-1 min-w-[180px]">
+          <CardContent className="py-4 flex flex-col items-center">
+            <span className="text-2xl font-bold">{statistics.sold}</span>
+            <span className="text-muted-foreground text-xs">Sold QR Codes</span>
+          </CardContent>
+        </Card>
+        <Card className="flex-1 min-w-[180px]">
+          <CardContent className="py-4 flex flex-col items-center">
+            <span className="text-2xl font-bold">{statistics.unsold}</span>
+            <span className="text-muted-foreground text-xs">Unsold QR Codes</span>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Tabs */}
@@ -355,6 +381,17 @@ export default function QRCodesPage() {
 
       {/* Action Buttons */}
       <div className="flex justify-end mb-4 gap-2">
+        <Button 
+          variant="outline"
+          className="flex items-center gap-2"
+          onClick={() => {
+            fetchSecureLinks(1, activeTab, true);
+            toast.success('Dashboard refreshed');
+          }}
+        >
+          <RefreshCw className="h-4 w-4" />
+          <span className="hidden sm:inline">Refresh</span>
+        </Button>
         <Button 
           variant="outline"
           className="flex items-center gap-2"

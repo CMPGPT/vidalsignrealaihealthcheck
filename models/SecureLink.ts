@@ -30,6 +30,10 @@ const SecureLinkSchema = new Schema({
     type: Date, 
     default: Date.now 
   },
+  metadata: {
+    type: Schema.Types.Mixed,
+    default: {}
+  },
 });
 
 // Add TTL index on expiresAt

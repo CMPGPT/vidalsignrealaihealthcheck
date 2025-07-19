@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
+import { QRCode } from '@/models/QRCode';
 import { SecureLink } from '@/models/SecureLink';
 import { PaymentHistory } from '@/models/PaymentHistory';
 import { v4 as uuidv4 } from 'uuid';
@@ -56,31 +57,58 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Generate the specified number of secure links
+    // Generate the specified number of QR codes AND secure links for partner
+    const qrCodes = [];
     const secureLinks = [];
+    
     for (let i = 0; i < count; i++) {
-      // Generate a unique chat ID for each link
-      const chatId = `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}`;
+      // Generate a unique QR code ID
+      const qrCodeId = uuidv4();
+      
+      // Create the QR code (for partner's own use)
+      const qrCode = new QRCode({
+        id: qrCodeId,
+        partnerId,
+        assigned: true, // Partner assigns it to themselves
+        customerName: 'Partner Owned',
+        customerId: partnerId,
+        assignedDate: new Date(),
+        used: false,
+        createdAt: new Date(),
+        generated: new Date().toISOString(),
+        metadata: {
+          plan: packageName || 'Partner Package',
+          description: `Partner QR Code ${i + 1}`,
+          isActive: true,
+          usageCount: 0,
+          maxUsage: 1,
+        }
+      });
+      
+      // Create a secure link for this QR code
       const linkId = uuidv4();
+      const chatId = `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}`;
       
-      // Set expiry time (default 1 year from now)
-      const expiresAt = new Date();
-      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
-      
-      // Create the secure link
       const secureLink = new SecureLink({
         linkId,
         partnerId,
         chatId,
-        expiresAt,
+        expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
         isUsed: false,
-        createdAt: new Date()
+        createdAt: new Date(),
+        metadata: {
+          qrCodeId: qrCodeId,
+          partnerOwned: true,
+          packageName: packageName
+        }
       });
       
+      qrCodes.push(qrCode);
       secureLinks.push(secureLink);
     }
     
-    // Save all secure links in bulk
+    // Save all QR codes and secure links in bulk
+    await QRCode.insertMany(qrCodes);
     await SecureLink.insertMany(secureLinks);
     
     // Record this transaction to prevent duplicate processing
@@ -90,12 +118,12 @@ export async function POST(request: NextRequest) {
       count
     });
     
-    console.log(`Generated ${count} secure links for partner ${partnerId}`);
+    console.log(`Generated ${count} QR codes and secure links for partner ${partnerId}`);
 
     return NextResponse.json({
       success: true,
-      count: secureLinks.length,
-      message: `Generated ${secureLinks.length} secure links successfully`
+      count: qrCodes.length,
+      message: `Generated ${qrCodes.length} QR codes and secure links successfully`
     });
 
   } catch (error) {

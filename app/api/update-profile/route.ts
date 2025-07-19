@@ -4,54 +4,32 @@ import dbConnect from '@/lib/dbConnect';
 import PartnerUser from '@/models/PartnerUser';
 import { doubleEncrypt, doubleDecrypt } from '@/lib/encryption';
 
-export async function PUT(req: NextRequest) {
+export async function PUT(request: NextRequest) {
   try {
     console.log('🔍 UPDATE PROFILE: Starting profile update');
     
-    // Get the user's token
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+    const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
     
-    if (!token || !token.email) {
+    if (!token?.email) {
       console.log('❌ UPDATE PROFILE: No token or email found');
-      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     console.log('✅ UPDATE PROFILE: Token found for email:', token.email);
 
-    const body = await req.json();
-    const {
-      firstName,
-      lastName,
-      phone,
-      website,
-      organizationName,
-      businessAddress,
-      city,
-      state,
-      zip,
-      businessType
-    } = body;
-
-    console.log('🔍 UPDATE PROFILE: Received data:', {
-      firstName,
-      lastName,
-      phone,
-      website: website ? 'provided' : 'not provided',
-      organizationName,
-      city,
-      state
-    });
+    const body = await request.json();
+    console.log('🔍 UPDATE PROFILE: Received data:', body);
 
     await dbConnect();
 
-    // Find the user (handle encrypted emails)
-    let user = await PartnerUser.findOne({ email: token.email });
+    // Find the partner user by email (handle encrypted emails)
+    let partnerUser = await PartnerUser.findOne({ email: token.email });
     
-    if (!user) {
+    if (!partnerUser) {
       console.log('🔍 UPDATE PROFILE: Direct lookup failed, trying encrypted email');
       try {
         const encryptedEmail = doubleEncrypt(token.email);
-        user = await PartnerUser.findOne({ email: encryptedEmail });
+        partnerUser = await PartnerUser.findOne({ email: encryptedEmail });
       } catch (error) {
         console.log('🔍 UPDATE PROFILE: Encryption failed, trying to decrypt all emails');
         // Try to find by decrypting all emails
@@ -61,7 +39,7 @@ export async function PUT(req: NextRequest) {
           try {
             const decryptedEmail = doubleDecrypt(potentialUser.email);
             if (decryptedEmail === token.email) {
-              user = potentialUser;
+              partnerUser = potentialUser;
               break;
             }
           } catch (e) {
@@ -70,73 +48,82 @@ export async function PUT(req: NextRequest) {
         }
       }
     }
-
-    if (!user) {
-      console.log('❌ UPDATE PROFILE: User not found');
-      return NextResponse.json({ message: 'User not found' }, { status: 404 });
+    
+    if (!partnerUser) {
+      console.log('❌ UPDATE PROFILE: Partner user not found for email:', token.email);
+      return NextResponse.json({ error: 'Partner not found' }, { status: 404 });
     }
 
-    console.log('✅ UPDATE PROFILE: User found:', user._id);
+    console.log('✅ UPDATE PROFILE: Partner user found:', partnerUser._id);
 
-    // Prepare update data (encrypt sensitive fields)
+    // Update fields that are provided
     const updateData: any = {};
-
-    if (firstName) {
-      updateData.first_Name = doubleEncrypt(firstName);
+    
+    if (body.stripePublishableKey !== undefined) {
+      updateData.stripePublishableKey = body.stripePublishableKey;
     }
-    if (lastName) {
-      updateData.last_Name = doubleEncrypt(lastName);
+    
+    if (body.stripeSecretKey !== undefined) {
+      updateData.stripeSecretKey = body.stripeSecretKey;
     }
-    if (phone) {
-      updateData.phone = doubleEncrypt(phone);
-    }
-    if (website) {
-      updateData.website_link = doubleEncrypt(website);
-    }
-    if (organizationName) {
-      updateData.organization_name = doubleEncrypt(organizationName);
-    }
-    if (businessAddress) {
-      updateData.business_address = doubleEncrypt(businessAddress);
-    }
-    if (city) {
-      updateData.city = doubleEncrypt(city);
-    }
-    if (state) {
-      updateData.state = doubleEncrypt(state);
-    }
-    if (zip) {
-      updateData.zip = doubleEncrypt(zip);
-    }
-    if (businessType) {
-      updateData.business_type = doubleEncrypt(businessType);
+    
+    if (body.stripeWebhookSecret !== undefined) {
+      updateData.stripeWebhookSecret = body.stripeWebhookSecret;
     }
 
-    console.log('🔍 UPDATE PROFILE: Updating fields:', Object.keys(updateData));
+    // Update other profile fields if provided
+    if (body.firstName !== undefined) updateData.first_Name = body.firstName;
+    if (body.lastName !== undefined) updateData.last_Name = body.lastName;
+    if (body.phone !== undefined) updateData.phone = body.phone;
+    if (body.website !== undefined) updateData.website_link = body.website;
+    if (body.organizationName !== undefined) updateData.organization_name = body.organizationName;
+    if (body.businessAddress !== undefined) updateData.business_address = body.businessAddress;
+    if (body.city !== undefined) updateData.city = body.city;
+    if (body.state !== undefined) updateData.state = body.state;
+    if (body.zip !== undefined) updateData.zip = body.zip;
+    if (body.businessType !== undefined) updateData.business_type = body.businessType;
 
-    // Update the user
-    const updatedUser = await PartnerUser.findByIdAndUpdate(
-      user._id,
+    console.log('🔍 UPDATE PROFILE: Updating with data:', updateData);
+
+    // Update the partner user
+    const updatedPartner = await PartnerUser.findByIdAndUpdate(
+      partnerUser._id,
       updateData,
       { new: true }
     );
 
-    if (!updatedUser) {
-      console.log('❌ UPDATE PROFILE: Failed to update user');
-      return NextResponse.json({ message: 'Failed to update profile' }, { status: 500 });
+    if (!updatedPartner) {
+      console.log('❌ UPDATE PROFILE: Failed to update partner user');
+      return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });
     }
 
-    console.log('✅ UPDATE PROFILE: Profile updated successfully');
+    console.log('✅ UPDATE PROFILE: Successfully updated partner user');
 
     return NextResponse.json({ 
+      success: true,
       message: 'Profile updated successfully',
-      success: true 
-    }, { status: 200 });
+      partner: {
+        firstName: updatedPartner.first_Name,
+        lastName: updatedPartner.last_Name,
+        email: updatedPartner.email,
+        phone: updatedPartner.phone,
+        website: updatedPartner.website_link,
+        organizationName: updatedPartner.organization_name,
+        businessAddress: updatedPartner.business_address,
+        city: updatedPartner.city,
+        state: updatedPartner.state,
+        zip: updatedPartner.zip,
+        businessType: updatedPartner.business_type,
+        stripePublishableKey: updatedPartner.stripePublishableKey,
+        stripeSecretKey: updatedPartner.stripeSecretKey,
+        stripeWebhookSecret: updatedPartner.stripeWebhookSecret,
+      }
+    });
 
   } catch (error) {
-    console.error('❌ UPDATE PROFILE: Error:', error);
+    console.error('❌ UPDATE PROFILE: Error updating profile:', error);
     return NextResponse.json(
-      { message: 'Failed to update profile' }, 
+      { error: 'Failed to update profile' },
       { status: 500 }
     );
   }

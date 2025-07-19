@@ -66,7 +66,10 @@ export async function GET(req: NextRequest) {
       city: '',
       state: '',
       zip: '',
-      businessType: ''
+      businessType: '',
+      stripePublishableKey: user.stripePublishableKey || '',
+      stripeSecretKey: user.stripeSecretKey || '',
+      stripeWebhookSecret: user.stripeWebhookSecret || ''
     };
 
     // Decrypt fields

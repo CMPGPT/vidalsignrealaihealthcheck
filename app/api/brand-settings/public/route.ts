@@ -55,8 +55,12 @@ export async function GET(req: NextRequest) {
       brandSettings: {
         brandName: brandSettings.brandName,
         logoUrl: brandSettings.logoUrl || '',
-        primaryColor: brandSettings.primaryColor,
-        secondaryColor: brandSettings.secondaryColor,
+        selectedTheme: brandSettings.selectedTheme,
+        websiteStyle: brandSettings.websiteStyle,
+        customColors: brandSettings.customColors,
+        heroSection: brandSettings.heroSection,
+        featuresSection: brandSettings.featuresSection,
+        pricingSection: brandSettings.pricingSection,
         isDeployed: brandSettings.isDeployed,
         websiteUrl: brandSettings.websiteUrl || ''
       }

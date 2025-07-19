@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
 
     // Generate partner website URL
     const partnerUrl = generatePartnerUrl(brandSettings.brandName);
-    const fullWebsiteUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001'}${partnerUrl}`;
+    const fullWebsiteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${partnerUrl}`;
     
     console.log('🔍 DEPLOY WEBSITE: Generated partner URL:', fullWebsiteUrl);
 
@@ -124,8 +124,8 @@ export async function POST(req: NextRequest) {
         brandSettings: {
           brandName: updatedBrandSettings.brandName,
           logoUrl: updatedBrandSettings.logoUrl,
-          primaryColor: updatedBrandSettings.primaryColor,
-          secondaryColor: updatedBrandSettings.secondaryColor,
+          selectedTheme: updatedBrandSettings.selectedTheme,
+          customColors: updatedBrandSettings.customColors,
           isDeployed: updatedBrandSettings.isDeployed,
           websiteUrl: updatedBrandSettings.websiteUrl
         }

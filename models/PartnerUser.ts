@@ -14,6 +14,12 @@ export interface IPartnerUser extends Document {
   city?: string;
   zip?: string;
   business_type?: string;
+  stripePublishableKey?: string;
+  stripeSecretKey?: string;
+  stripeWebhookSecret?: string;
+  secureLinksGenerated?: number;
+  qrCodesCreated?: number;
+  totalRevenue?: number;
 }
 
 const PartnerUserSchema: Schema = new Schema(
@@ -31,6 +37,12 @@ const PartnerUserSchema: Schema = new Schema(
     city: { type: String },
     zip: { type: String },
     business_type: { type: String },
+    stripePublishableKey: { type: String },
+    stripeSecretKey: { type: String },
+    stripeWebhookSecret: { type: String },
+    secureLinksGenerated: { type: Number, default: 0 },
+    qrCodesCreated: { type: Number, default: 0 },
+    totalRevenue: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

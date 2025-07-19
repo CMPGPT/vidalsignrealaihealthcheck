@@ -64,8 +64,69 @@ export async function GET(req: NextRequest) {
         brandSettings: {
           brandName: '',
           logoUrl: '',
-          primaryColor: '#3B82F6',
-          secondaryColor: '#10B981',
+          selectedTheme: 'medical',
+          websiteStyle: 'classic',
+          customColors: {
+            primary: '#3B82F6',
+            secondary: '#10B981',
+            accent: '#06b6d4'
+          },
+          heroSection: {
+            headline: 'Understand Your Lab Results In Plain English',
+            subheadline: 'Translate complex lab reports into clear, easy-to-understand explanations using advanced AI technology—no medical knowledge required.',
+            ctaText: 'Upload Your Labs',
+            secondaryCtaText: 'Learn More',
+            stats: [
+              { value: '100K+', label: 'Healthcare Providers' },
+              { value: '500K+', label: 'Patients Served' },
+              { value: '4.9/5', label: 'Satisfaction Score' },
+              { value: 'HIPAA', label: 'Compliant' }
+            ]
+          },
+          featuresSection: {
+            title: 'Two Simple Ways to Access',
+            subtitle: 'Flexible access options for individuals and businesses, with no complex dashboards or management required.',
+            features: [
+              {
+                title: 'Simple Upload Process',
+                description: 'Upload your lab reports as PDFs or images in seconds. Our AI automatically recognizes test results.',
+                icon: 'upload'
+              },
+              {
+                title: 'AI-Powered Explanations', 
+                description: 'Receive clear explanations of your lab results with actionable insights in plain language.',
+                icon: 'brain'
+              },
+              {
+                title: 'HIPAA Compliant',
+                description: 'All data is processed securely with full HIPAA compliance and encryption standards.',
+                icon: 'shield'
+              }
+            ]
+          },
+          pricingSection: {
+            enabled: true,
+            title: 'Partner With Us',
+            subtitle: 'Offer AI-powered lab report translations to your clients and patients with our partner program.',
+            plans: [
+              {
+                name: 'Professional',
+                price: '$99',
+                period: 'per month',
+                description: 'Ideal for growing clinics and wellness facilities.',
+                features: [
+                  '200 QR codes per month',
+                  'Fully branded patient experience',
+                  'Detailed usage analytics',
+                  'Priority support',
+                  'Customizable marketing kit',
+                  'API access for integration'
+                ],
+                popular: true,
+                buttonText: 'Get Started'
+              }
+            ]
+          },
           isDeployed: false,
           websiteUrl: ''
         }
@@ -79,8 +140,12 @@ export async function GET(req: NextRequest) {
       brandSettings: {
         brandName: brandSettings.brandName,
         logoUrl: brandSettings.logoUrl || '',
-        primaryColor: brandSettings.primaryColor,
-        secondaryColor: brandSettings.secondaryColor,
+        selectedTheme: brandSettings.selectedTheme,
+        websiteStyle: brandSettings.websiteStyle,
+        customColors: brandSettings.customColors,
+        heroSection: brandSettings.heroSection,
+        featuresSection: brandSettings.featuresSection,
+        pricingSection: brandSettings.pricingSection,
         isDeployed: brandSettings.isDeployed,
         websiteUrl: brandSettings.websiteUrl || '',
         lastDeployedAt: brandSettings.lastDeployedAt
@@ -111,7 +176,7 @@ export async function POST(req: NextRequest) {
     console.log('✅ CREATE BRAND SETTINGS: Token found for email:', token.email);
 
     const body = await req.json();
-    const { brandName, logoUrl, logoPublicId, primaryColor, secondaryColor } = body;
+    const { brandName } = body;
 
     if (!brandName) {
       return NextResponse.json({ message: 'Brand name is required' }, { status: 400 });
@@ -160,14 +225,75 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Brand settings already exist. Use PUT to update.' }, { status: 400 });
     }
 
-    // Create new brand settings
+    // Create new brand settings with all the new fields
     const brandSettings = new BrandSettings({
       userId: String(user._id),
       brandName,
-      logoUrl: logoUrl || '',
-      logoPublicId: logoPublicId || '',
-      primaryColor: primaryColor || '#3B82F6',
-      secondaryColor: secondaryColor || '#10B981',
+      logoUrl: body.logoUrl || '',
+      logoPublicId: body.logoPublicId || '',
+      selectedTheme: body.selectedTheme || 'medical',
+      websiteStyle: body.websiteStyle || 'classic',
+      customColors: body.customColors || {
+        primary: '#3B82F6',
+        secondary: '#10B981',
+        accent: '#06b6d4'
+      },
+      heroSection: body.heroSection || {
+        headline: 'Understand Your Lab Results In Plain English',
+        subheadline: 'Translate complex lab reports into clear, easy-to-understand explanations using advanced AI technology—no medical knowledge required.',
+        ctaText: 'Upload Your Labs',
+        secondaryCtaText: 'Learn More',
+        stats: [
+          { value: '100K+', label: 'Healthcare Providers' },
+          { value: '500K+', label: 'Patients Served' },
+          { value: '4.9/5', label: 'Satisfaction Score' },
+          { value: 'HIPAA', label: 'Compliant' }
+        ]
+      },
+      featuresSection: body.featuresSection || {
+        title: 'Two Simple Ways to Access',
+        subtitle: 'Flexible access options for individuals and businesses, with no complex dashboards or management required.',
+        features: [
+          {
+            title: 'Simple Upload Process',
+            description: 'Upload your lab reports as PDFs or images in seconds. Our AI automatically recognizes test results.',
+            icon: 'upload'
+          },
+          {
+            title: 'AI-Powered Explanations', 
+            description: 'Receive clear explanations of your lab results with actionable insights in plain language.',
+            icon: 'brain'
+          },
+          {
+            title: 'HIPAA Compliant',
+            description: 'All data is processed securely with full HIPAA compliance and encryption standards.',
+            icon: 'shield'
+          }
+        ]
+      },
+      pricingSection: body.pricingSection || {
+        enabled: true,
+        title: 'Partner With Us',
+        subtitle: 'Offer AI-powered lab report translations to your clients and patients with our partner program.',
+        plans: [
+          {
+            name: 'Professional',
+            price: '$99',
+            period: 'per month',
+            description: 'Ideal for growing clinics and wellness facilities.',
+            features: [
+              '200 QR codes per month',
+              'Fully branded patient experience',
+              'Detailed usage analytics',
+              'Priority support',
+              'Customizable marketing kit',
+              'API access for integration'
+            ],
+            popular: true,
+            buttonText: 'Get Started'
+          }
+        ]
+      },
       isDeployed: false
     });
 
@@ -181,8 +307,12 @@ export async function POST(req: NextRequest) {
       brandSettings: {
         brandName: brandSettings.brandName,
         logoUrl: brandSettings.logoUrl,
-        primaryColor: brandSettings.primaryColor,
-        secondaryColor: brandSettings.secondaryColor,
+        selectedTheme: brandSettings.selectedTheme,
+        websiteStyle: brandSettings.websiteStyle,
+        customColors: brandSettings.customColors,
+        heroSection: brandSettings.heroSection,
+        featuresSection: brandSettings.featuresSection,
+        pricingSection: brandSettings.pricingSection,
         isDeployed: brandSettings.isDeployed
       }
     }, { status: 201 });
@@ -211,7 +341,7 @@ export async function PUT(req: NextRequest) {
     console.log('✅ UPDATE BRAND SETTINGS: Token found for email:', token.email);
 
     const body = await req.json();
-    const { brandName, logoUrl, logoPublicId, primaryColor, secondaryColor } = body;
+    console.log('🔍 UPDATE BRAND SETTINGS: Request body received:', JSON.stringify(body, null, 2));
 
     await dbConnect();
 
@@ -248,16 +378,24 @@ export async function PUT(req: NextRequest) {
 
     console.log('✅ UPDATE BRAND SETTINGS: User found:', user._id);
 
-    // Prepare update data
+    // Prepare update data - accept all fields from the new structure
     const updateData: any = {};
     
-    if (brandName !== undefined) updateData.brandName = brandName;
-    if (logoUrl !== undefined) updateData.logoUrl = logoUrl;
-    if (logoPublicId !== undefined) updateData.logoPublicId = logoPublicId;
-    if (primaryColor !== undefined) updateData.primaryColor = primaryColor;
-    if (secondaryColor !== undefined) updateData.secondaryColor = secondaryColor;
+    if (body.brandName !== undefined) updateData.brandName = body.brandName;
+    if (body.logoUrl !== undefined) updateData.logoUrl = body.logoUrl;
+    if (body.logoPublicId !== undefined) updateData.logoPublicId = body.logoPublicId;
+    if (body.selectedTheme !== undefined) updateData.selectedTheme = body.selectedTheme;
+    if (body.websiteStyle !== undefined) updateData.websiteStyle = body.websiteStyle;
+    if (body.customColors !== undefined) updateData.customColors = body.customColors;
+    if (body.heroSection !== undefined) updateData.heroSection = body.heroSection;
+    if (body.featuresSection !== undefined) updateData.featuresSection = body.featuresSection;
+    if (body.pricingSection !== undefined) updateData.pricingSection = body.pricingSection;
+    if (body.isDeployed !== undefined) updateData.isDeployed = body.isDeployed;
+    if (body.websiteUrl !== undefined) updateData.websiteUrl = body.websiteUrl;
+    if (body.lastDeployedAt !== undefined) updateData.lastDeployedAt = body.lastDeployedAt;
 
     console.log('🔍 UPDATE BRAND SETTINGS: Updating fields:', Object.keys(updateData));
+    console.log('🔍 UPDATE BRAND SETTINGS: Update data:', JSON.stringify(updateData, null, 2));
 
     // Update or create brand settings
     const brandSettings = await BrandSettings.findOneAndUpdate(
@@ -272,6 +410,11 @@ export async function PUT(req: NextRequest) {
     }
 
     console.log('✅ UPDATE BRAND SETTINGS: Brand settings updated successfully');
+    console.log('🔍 UPDATE BRAND SETTINGS: Final brand settings:', {
+      selectedTheme: brandSettings.selectedTheme,
+      customColors: brandSettings.customColors,
+      brandName: brandSettings.brandName
+    });
 
     return NextResponse.json({ 
       success: true,
@@ -279,10 +422,15 @@ export async function PUT(req: NextRequest) {
       brandSettings: {
         brandName: brandSettings.brandName,
         logoUrl: brandSettings.logoUrl,
-        primaryColor: brandSettings.primaryColor,
-        secondaryColor: brandSettings.secondaryColor,
+        selectedTheme: brandSettings.selectedTheme,
+        websiteStyle: brandSettings.websiteStyle,
+        customColors: brandSettings.customColors,
+        heroSection: brandSettings.heroSection,
+        featuresSection: brandSettings.featuresSection,
+        pricingSection: brandSettings.pricingSection,
         isDeployed: brandSettings.isDeployed,
-        websiteUrl: brandSettings.websiteUrl
+        websiteUrl: brandSettings.websiteUrl,
+        lastDeployedAt: brandSettings.lastDeployedAt
       }
     }, { status: 200 });
 

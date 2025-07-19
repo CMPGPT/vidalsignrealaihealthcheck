@@ -20,6 +20,7 @@ import { CreditCard, FileText, Building, Globe, Loader2, Upload, Palette, Rocket
 import { useSession } from 'next-auth/react';
 import { toast } from "sonner";
 import { useUploadThing } from "@/lib/uploadthing-hooks";
+import BrandingEditor from "@/components/partners/BrandingEditor";
 
 // Import centralized data
 import { partnerBusinessInfo, partnerBillingHistory } from "@/data/mock/partnerUsers";
@@ -36,13 +37,54 @@ interface ProfileData {
   state: string;
   zip: string;
   businessType: string;
+  stripePublishableKey?: string;
+  stripeSecretKey?: string;
+  stripeWebhookSecret?: string;
 }
 
 interface BrandSettings {
   brandName: string;
   logoUrl: string;
-  primaryColor: string;
-  secondaryColor: string;
+  selectedTheme: string;
+  websiteStyle: string;
+  customColors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
+  heroSection: {
+    headline: string;
+    subheadline: string;
+    ctaText: string;
+    secondaryCtaText: string;
+    stats: Array<{
+      value: string;
+      label: string;
+    }>;
+  };
+  featuresSection: {
+    title: string;
+    subtitle: string;
+    features: Array<{
+      title: string;
+      description: string;
+      icon: string;
+    }>;
+  };
+  pricingSection: {
+    enabled: boolean;
+    title: string;
+    subtitle: string;
+    plans: Array<{
+      name: string;
+      price: string;
+      quantity: string;
+      description: string;
+      features: string[];
+      popular: boolean;
+      buttonText: string;
+    }>;
+  };
   isDeployed: boolean;
   websiteUrl: string;
   lastDeployedAt?: Date;
@@ -66,8 +108,67 @@ export default function SettingsPage() {
   const [brandSettings, setBrandSettings] = useState<BrandSettings>({
     brandName: '',
     logoUrl: '',
-    primaryColor: '#3B82F6',
-    secondaryColor: '#10B981',
+    selectedTheme: 'medical',
+    websiteStyle: 'classic',
+    customColors: {
+      primary: '#3B82F6',
+      secondary: '#10B981',
+      accent: '#06b6d4'
+    },
+    heroSection: {
+      headline: 'Understand Your Lab Results In Plain English',
+      subheadline: 'Translate complex lab reports into clear, easy-to-understand explanations using advanced AI technology—no medical knowledge required.',
+      ctaText: 'Upload Your Labs',
+      secondaryCtaText: 'Learn More',
+      stats: [
+        { value: '100K+', label: 'Healthcare Providers' },
+        { value: '500K+', label: 'Patients Served' },
+        { value: '4.9/5', label: 'Satisfaction Score' },
+        { value: 'HIPAA', label: 'Compliant' }
+      ]
+    },
+    featuresSection: {
+      title: 'Two Simple Ways to Access',
+      subtitle: 'Flexible access options for individuals and businesses, with no complex dashboards or management required.',
+      features: [
+        {
+          title: 'Simple Upload Process',
+          description: 'Upload your lab reports as PDFs or images in seconds. Our AI automatically recognizes test results.',
+          icon: 'upload'
+        },
+        {
+          title: 'AI-Powered Explanations', 
+          description: 'Receive clear explanations of your lab results with actionable insights in plain language.',
+          icon: 'brain'
+        },
+        {
+          title: 'HIPAA Compliant',
+          description: 'All data is processed securely with full HIPAA compliance and encryption standards.',
+          icon: 'shield'
+        }
+      ]
+    },
+    pricingSection: {
+      enabled: true,
+      title: 'QR Codes & Secure Links',
+      subtitle: 'Purchase QR codes and secure links to share lab reports with your patients.',
+      plans: [
+        {
+          name: 'Starter Pack',
+          price: '$29',
+          quantity: '10 QR Codes',
+          description: 'Perfect for small practices',
+          features: [
+            '10 QR Codes',
+            'Secure link generation',
+            'Basic support',
+            '24-hour expiry'
+          ],
+          popular: false,
+          buttonText: 'Purchase Now'
+        }
+      ]
+    },
     isDeployed: false,
     websiteUrl: ''
   });
@@ -152,15 +253,20 @@ export default function SettingsPage() {
         
         if (brandData.success) {
           console.log('✅ SETTINGS: Brand settings received:', brandData.brandSettings);
-          setBrandSettings({
+          setBrandSettings(prev => ({
+            ...prev,
             brandName: brandData.brandSettings.brandName || '',
             logoUrl: brandData.brandSettings.logoUrl || '',
-            primaryColor: brandData.brandSettings.primaryColor || '#3B82F6',
-            secondaryColor: brandData.brandSettings.secondaryColor || '#10B981',
+            selectedTheme: brandData.brandSettings.selectedTheme || 'medical',
+            websiteStyle: brandData.brandSettings.websiteStyle || 'classic',
+            customColors: brandData.brandSettings.customColors || prev.customColors,
+            heroSection: brandData.brandSettings.heroSection || prev.heroSection,
+            featuresSection: brandData.brandSettings.featuresSection || prev.featuresSection,
+            pricingSection: brandData.brandSettings.pricingSection || prev.pricingSection,
             isDeployed: brandData.brandSettings.isDeployed || false,
             websiteUrl: brandData.brandSettings.websiteUrl || '',
             lastDeployedAt: brandData.brandSettings.lastDeployedAt ? new Date(brandData.brandSettings.lastDeployedAt) : undefined
-          });
+          }));
         } else {
           console.log('🔍 SETTINGS: No brand settings found, using defaults');
         }
@@ -184,12 +290,9 @@ export default function SettingsPage() {
     }));
   };
 
-  // Handle brand settings input changes
-  const handleBrandInputChange = (field: keyof BrandSettings, value: string) => {
-    setBrandSettings(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  // Handle brand settings update
+  const updateBrandSettings = (settings: BrandSettings) => {
+    setBrandSettings(settings);
   };
 
   // Handle profile form submission
@@ -264,23 +367,21 @@ export default function SettingsPage() {
   };
 
   // Handle brand settings form submission
-  const handleBrandSubmit = async (e: React.FormEvent) => {
+  const handleBrandSubmit = async (e: React.FormEvent, settingsToSave?: BrandSettings) => {
     e.preventDefault();
     setSaving(true);
 
+    // Use passed settings or current brandSettings
+    const settingsData = settingsToSave || brandSettings;
+
     try {
-      console.log('🔍 SETTINGS: Submitting brand settings update...');
+      console.log('🔍 SETTINGS: Submitting brand settings update...', settingsData);
       const response = await fetch('/api/brand-settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          brandName: brandSettings.brandName,
-          logoUrl: brandSettings.logoUrl,
-          primaryColor: brandSettings.primaryColor,
-          secondaryColor: brandSettings.secondaryColor,
-        }),
+        body: JSON.stringify(settingsData),
       });
 
       const data = await response.json();
@@ -375,6 +476,45 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('❌ SETTINGS: Error uploading logo:', error);
       toast.error('Failed to upload logo');
+    }
+  };
+
+  const handleStripeCredentialsSave = async () => {
+    setSaving(true);
+    try {
+      console.log('🔍 STRIPE SAVE: Saving credentials:', {
+        stripePublishableKey: profileData.stripePublishableKey ? '***' : 'empty',
+        stripeSecretKey: profileData.stripeSecretKey ? '***' : 'empty',
+        stripeWebhookSecret: profileData.stripeWebhookSecret ? '***' : 'empty',
+      });
+
+      const response = await fetch('/api/update-profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          stripePublishableKey: profileData.stripePublishableKey,
+          stripeSecretKey: profileData.stripeSecretKey,
+          stripeWebhookSecret: profileData.stripeWebhookSecret,
+        }),
+      });
+
+      const data = await response.json();
+      console.log('🔍 STRIPE SAVE: Response:', data);
+
+      if (response.ok && data.success) {
+        toast.success('Stripe credentials saved successfully!');
+        console.log('✅ STRIPE SAVE: Credentials saved successfully');
+      } else {
+        console.log('❌ STRIPE SAVE: Failed to save:', data.error || data.message);
+        toast.error(data.error || data.message || 'Failed to save Stripe credentials');
+      }
+    } catch (error) {
+      console.error('❌ STRIPE SAVE: Error saving Stripe credentials:', error);
+      toast.error('Failed to save Stripe credentials');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -554,37 +694,87 @@ export default function SettingsPage() {
         <TabsContent value="billing" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Billing and Subscription</CardTitle>
+              <CardTitle>Stripe Integration</CardTitle>
               <CardDescription>
-                Manage your subscription plan and payment methods
+                Configure your Stripe credentials to receive payments from your website customers
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="p-4 border border-border rounded-lg bg-background">
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="font-medium">Current Plan: Business</h3>
-                    <p className="text-sm text-muted-foreground">$79/month, billed monthly</p>
+                    <h3 className="font-medium">Stripe Account Status</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {profileData.stripePublishableKey && profileData.stripeSecretKey 
+                        ? '✅ Connected' 
+                        : '❌ Not configured'}
+                    </p>
                   </div>
-                  <Button variant="outline">Change Plan</Button>
-                </div>
-                
-                <div className="mt-4 pt-4 border-t">
-                  <p className="text-sm text-muted-foreground">Your next billing date is July 15, 2023</p>
+                  <Button variant="outline">Test Connection</Button>
                 </div>
               </div>
               
               <div>
-                <h3 className="font-medium mb-3">Payment Method</h3>
-                <div className="p-4 border border-border rounded-lg bg-background flex items-center justify-between">
-                  <div className="flex items-center">
-                    <CreditCard className="h-5 w-5 mr-3 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">Visa ending in 4242</p>
-                      <p className="text-sm text-muted-foreground">Expires 12/2025</p>
-                    </div>
+                <h3 className="font-medium mb-3">Stripe Credentials</h3>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="stripe-publishable-key">Publishable Key</Label>
+                    <Input 
+                      id="stripe-publishable-key"
+                      type="password"
+                      value={profileData.stripePublishableKey || ''}
+                      onChange={(e) => handleInputChange('stripePublishableKey', e.target.value)}
+                      placeholder="pk_test_..."
+                    />
+                    <p className="text-xs text-muted-foreground">Your Stripe publishable key (starts with pk_)</p>
                   </div>
-                  <Button variant="outline" size="sm">Update</Button>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="stripe-secret-key">Secret Key</Label>
+                    <Input 
+                      id="stripe-secret-key"
+                      type="password"
+                      value={profileData.stripeSecretKey || ''}
+                      onChange={(e) => handleInputChange('stripeSecretKey', e.target.value)}
+                      placeholder="sk_test_..."
+                    />
+                    <p className="text-xs text-muted-foreground">Your Stripe secret key (starts with sk_)</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="stripe-webhook-secret">Webhook Secret (Optional)</Label>
+                    <Input 
+                      id="stripe-webhook-secret"
+                      type="password"
+                      value={profileData.stripeWebhookSecret || ''}
+                      onChange={(e) => handleInputChange('stripeWebhookSecret', e.target.value)}
+                      placeholder="whsec_..."
+                    />
+                    <p className="text-xs text-muted-foreground">Webhook secret for payment confirmations</p>
+                  </div>
+                  
+                  <Button onClick={handleStripeCredentialsSave} disabled={saving}>
+                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Stripe Credentials
+                  </Button>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="font-medium mb-3">Usage & Limits</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-4 border border-border rounded-lg bg-background">
+                    <div className="text-2xl font-bold text-brand-primary">0</div>
+                    <div className="text-sm text-muted-foreground">Secure Links Generated</div>
+                  </div>
+                  <div className="p-4 border border-border rounded-lg bg-background">
+                    <div className="text-2xl font-bold text-brand-secondary">0</div>
+                    <div className="text-sm text-muted-foreground">QR Codes Created</div>
+                  </div>
+                  <div className="p-4 border border-border rounded-lg bg-background">
+                    <div className="text-2xl font-bold text-brand-accent">$0.00</div>
+                    <div className="text-sm text-muted-foreground">Total Revenue</div>
+                  </div>
                 </div>
               </div>
               
@@ -624,242 +814,18 @@ export default function SettingsPage() {
         
         {/* Branding Tab */}
         <TabsContent value="branding" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Brand Settings</CardTitle>
-              <CardDescription>
-                Customize your brand appearance and deploy your website
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <form onSubmit={handleBrandSubmit}>
-                <div className="space-y-6">
-                  {/* Brand Name */}
-                  <div>
-                    <Label htmlFor="brand-name">Brand Name</Label>
-                    <div className="relative mt-1">
-                      <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input 
-                        id="brand-name" 
-                        className="pl-10" 
-                        value={brandSettings.brandName}
-                        onChange={(e) => handleBrandInputChange('brandName', e.target.value)}
-                        placeholder="Enter your brand name"
-                      />
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      This name will appear on your website and QR code landing pages
-                    </p>
-                  </div>
-                  
-                  <Separator className="my-4" />
-                  
-                  {/* Brand Logo */}
-                  <div>
-                    <Label>Brand Logo</Label>
-                    <div className="mt-2 flex items-center">
-                      <div className="w-16 h-16 bg-muted rounded-md flex items-center justify-center border overflow-hidden">
-                        {brandSettings.logoUrl ? (
-                          <img 
-                            src={brandSettings.logoUrl} 
-                            alt="Brand Logo" 
-                            className="w-full h-full object-cover"
-                          />
-                        ) : brandSettings.brandName ? (
-                          <div className="text-xs font-bold text-center p-1 leading-tight">
-                            {brandSettings.brandName.substring(0, 8)}
-                          </div>
-                        ) : (
-                          <Image className="h-8 w-8 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="ml-4 space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            type="button"
-                            disabled={isUploadingLogo}
-                            onClick={() => document.getElementById('logo-upload')?.click()}
-                          >
-                            {isUploadingLogo ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Uploading...
-                              </>
-                            ) : (
-                              <>
-                                <Upload className="mr-2 h-4 w-4" />
-                                Upload Logo
-                              </>
-                            )}
-                          </Button>
-                          {brandSettings.logoUrl && (
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              type="button"
-                              onClick={() => handleBrandInputChange('logoUrl', '')}
-                            >
-                              Remove
-                            </Button>
-                          )}
-                        </div>
-                        <input
-                          id="logo-upload"
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const files = e.target.files;
-                            if (files) {
-                              handleLogoUpload(Array.from(files));
-                            }
-                          }}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Recommended size: 512x512px. Max 4MB.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Separator className="my-4" />
-                  
-                  {/* Brand Colors */}
-                  <div>
-                    <Label>Brand Colors</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="primary-color" className="text-sm">Primary Color</Label>
-                        <div className="flex items-center space-x-2">
-                          <div 
-                            className="w-6 h-6 rounded-full border" 
-                            style={{ backgroundColor: brandSettings.primaryColor }}
-                          />
-                          <Input 
-                            id="primary-color" 
-                            value={brandSettings.primaryColor}
-                            onChange={(e) => handleBrandInputChange('primaryColor', e.target.value)}
-                            className="w-36"
-                            placeholder="#3B82F6"
-                          />
-                          <input
-                            type="color"
-                            value={brandSettings.primaryColor}
-                            onChange={(e) => handleBrandInputChange('primaryColor', e.target.value)}
-                            className="w-8 h-8 rounded cursor-pointer"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="secondary-color" className="text-sm">Secondary Color</Label>
-                        <div className="flex items-center space-x-2">
-                          <div 
-                            className="w-6 h-6 rounded-full border" 
-                            style={{ backgroundColor: brandSettings.secondaryColor }}
-                          />
-                          <Input 
-                            id="secondary-color" 
-                            value={brandSettings.secondaryColor}
-                            onChange={(e) => handleBrandInputChange('secondaryColor', e.target.value)}
-                            className="w-36"
-                            placeholder="#10B981"
-                          />
-                          <input
-                            type="color"
-                            value={brandSettings.secondaryColor}
-                            onChange={(e) => handleBrandInputChange('secondaryColor', e.target.value)}
-                            className="w-8 h-8 rounded cursor-pointer"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Separator className="my-4" />
-                  
-                  {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Button type="submit" disabled={saving || deploying}>
-                      {saving ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Palette className="mr-2 h-4 w-4" />
-                          Save Brand Settings
-                        </>
-                      )}
-                    </Button>
-                    
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      disabled={saving || deploying || !brandSettings.brandName}
-                      onClick={handleDeploy}
-                    >
-                      {deploying ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Deploying...
-                        </>
-                      ) : (
-                        <>
-                          <Rocket className="mr-2 h-4 w-4" />
-                          Deploy Website
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-          
-          {/* Deployment Status */}
-          {brandSettings.isDeployed && brandSettings.websiteUrl && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Website Deployment</CardTitle>
-                <CardDescription>
-                  Your website is live and accessible
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="font-medium">Website URL:</p>
-                    <p className="text-sm text-muted-foreground">{brandSettings.websiteUrl}</p>
-                    {brandSettings.lastDeployedAt && (
-                      <p className="text-xs text-muted-foreground">
-                        Last deployed: {brandSettings.lastDeployedAt.toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      // Extract the partner path from the full URL
-                      const url = brandSettings.websiteUrl;
-                      if (url.includes('/partners/')) {
-                        const partnerPath = url.substring(url.indexOf('/partners/'));
-                        window.open(`http://localhost:3001${partnerPath}`, '_blank');
-                      } else {
-                        window.open(url, '_blank');
-                      }
-                    }}
-                  >
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Visit Website
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <BrandingEditor
+            initialSettings={brandSettings}
+            onSave={async (settings) => {
+              console.log('🔍 PARENT: Received settings from BrandingEditor:', JSON.stringify(settings, null, 2));
+              setBrandSettings(settings);
+              const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+              await handleBrandSubmit(fakeEvent, settings);
+            }}
+            onDeploy={handleDeploy}
+            isLoading={saving}
+            isDeploying={deploying}
+          />
         </TabsContent>
         
         <TabsContent value="security" className="space-y-4">
