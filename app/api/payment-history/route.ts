@@ -11,10 +11,21 @@ export async function GET(request: NextRequest) {
     }
     
     // Get payment history sorted by date (newest first)
-    const payments = await PaymentHistory.find({ partnerId })
+    const rawPayments = await PaymentHistory.find({ partnerId })
       .sort({ paymentDate: -1 })
       .lean();
-    
+
+    // Map to frontend's expected shape
+    const payments = rawPayments.map(payment => ({
+      transactionId: payment.transactionId,
+      planName: payment.packageName || '',
+      quantity: payment.count || 0,
+      totalAmount: payment.amount || 0,
+      transactionDate: payment.paymentDate || payment.createdAt || new Date(),
+      status: payment.status || 'completed',
+      customerEmail: payment.customerEmail || '',
+    }));
+
     return NextResponse.json({ payments });
   } catch (error) {
     console.error('Error fetching payment history:', error);

@@ -4,6 +4,7 @@ import BrandSettings from '@/models/BrandSettings';
 import PartnerUser from '@/models/PartnerUser';
 import { SecureLink } from '@/models/SecureLink';
 import { QRCode } from '@/models/QRCode';
+import { PartnerTransaction } from '@/models/PartnerTransaction';
 import { v4 as uuidv4 } from 'uuid';
 import { sendSecureLinksEmail, sendPartnerNotificationEmail } from '@/lib/sendEmail';
 
@@ -21,6 +22,21 @@ export async function POST(request: NextRequest) {
     }
 
     await dbConnect();
+
+    // Check if this session has already been processed
+    const existingProcessedSession = await SecureLink.findOne({
+      'metadata.sessionId': sessionId,
+      'metadata.processed': true
+    });
+
+    if (existingProcessedSession) {
+      console.log('✅ PAYMENT PROCESSING: Session already processed:', sessionId);
+      return NextResponse.json({ 
+        success: true,
+        message: 'Payment already processed. Your QR codes have been sent to your email.',
+        alreadyProcessed: true
+      });
+    }
 
     // Find the partner by brand name
     const brandSettings = await BrandSettings.findOne({ 
@@ -40,19 +56,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Partner not found' }, { status: 404 });
     }
 
+    // Extract quantity number from string like "5 QR Codes"
+    const quantityNumber = parseInt(quantity?.match(/\d+/)?.[0] || '1');
+    console.log('🔍 PAYMENT PROCESSING: Extracted quantity number:', quantityNumber, 'from quantity string:', quantity);
+
     // Find unused QR codes for this partner
     const unusedQRCodes = await QRCode.find({ 
       partnerId: brandSettings.userId,
       assigned: false,
       used: false
-    }).limit(quantity);
+    }).limit(quantityNumber);
 
     console.log('🔍 PAYMENT PROCESSING: Found unused QR codes:', unusedQRCodes.length, 'for partner:', brandSettings.userId);
 
-    if (unusedQRCodes.length < quantity) {
+    if (unusedQRCodes.length < quantityNumber) {
       console.log('❌ PAYMENT PROCESSING: Not enough unused QR codes available');
       return NextResponse.json({ 
-        error: `Not enough unused QR codes available. Partner has ${unusedQRCodes.length} unused codes but customer requested ${quantity}. Partner needs to purchase more QR codes.` 
+        error: `Not enough unused QR codes available. Partner has ${unusedQRCodes.length} unused codes but customer requested ${quantityNumber}. Partner needs to purchase more QR codes.` 
       }, { status: 400 });
     }
 
@@ -63,7 +83,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Assign unused QR codes to customer and create secure links
-    for (let i = 0; i < quantity; i++) {
+    for (let i = 0; i < quantityNumber; i++) {
       const qrCode = unusedQRCodes[i];
       
       // Create secure link for this QR code
@@ -79,8 +99,10 @@ export async function POST(request: NextRequest) {
           brandName: brandSettings.brandName,
           plan: plan,
           purchaseDate: new Date(),
-          purchaseQuantity: quantity,
-          qrCodeId: qrCode.id // Link to the QR code
+          purchaseQuantity: quantityNumber,
+          qrCodeId: qrCode.id, // Link to the QR code
+          sessionId: sessionId, // Track the session ID
+          processed: true // Mark as processed
         }
       });
       await secureLink.save();
@@ -107,10 +129,55 @@ export async function POST(request: NextRequest) {
       generatedItems.qrCodes.push(qrCode.id);
     }
 
+    // Extract plan name and price from the plan string (e.g., "Basic Plan - $29.99")
+    // Extract plan name from the plan string (e.g., "Basic Plan - $29.99")
+    const planName = plan.split(' - ')[0] || plan;
+    
+    // Extract exact price from the plan string - critical for correct billing
+    const priceMatch = plan.match(/\$(\d+\.?\d*)/);
+    if (!priceMatch) {
+      console.error('❌ PAYMENT PROCESSING: Could not extract price from plan string:', plan);
+      return NextResponse.json({ error: 'Invalid plan price format. Please contact support.' }, { status: 400 });
+    }
+    
+    // Use the exact price from the plan string (from branding/pricing section)
+    const priceAmount = parseFloat(priceMatch[1]);
+    console.log('✅ PAYMENT PROCESSING: Extracted price:', priceAmount, 'from plan string:', plan);
+    
+    // Validate the price
+    if (isNaN(priceAmount) || priceAmount <= 0) {
+      console.error('❌ PAYMENT PROCESSING: Invalid price amount:', priceAmount);
+      return NextResponse.json({ error: 'Invalid price amount. Please contact support.' }, { status: 400 });
+    }
+
+    // Create PartnerTransaction record for this sale
+    const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    await PartnerTransaction.create({
+      partnerId: brandSettings.userId,
+      transactionType: 'sale',
+      transactionId,
+      customerEmail: email,
+      planName,
+      planPrice: priceAmount,
+      quantity: quantityNumber,
+      totalAmount: priceAmount,
+      currency: 'USD',
+      paymentMethod: 'stripe',
+      status: 'completed',
+      transactionDate: new Date(),
+      metadata: {
+        stripeSessionId: sessionId,
+        secureLinkIds: generatedItems.secureLinks,
+        qrCodeIds: generatedItems.qrCodes,
+        partnerWebsiteUrl: brandSettings.websiteUrl,
+        notes: `Customer purchase: ${planName} - ${quantityNumber} QR codes`
+      }
+    });
+
     // Update partner's usage statistics (only increment secure links, not QR codes since we're using existing ones)
     await PartnerUser.findByIdAndUpdate(brandSettings.userId, {
       $inc: {
-        secureLinksGenerated: quantity,
+        secureLinksGenerated: quantityNumber,
         // qrCodesCreated: quantity, // Don't increment since we're using existing QR codes
       }
     });
@@ -138,7 +205,7 @@ export async function POST(request: NextRequest) {
         generatedItems.secureLinks, // secure links
         generatedItems.qrCodes, // QR codes
         planName, // plan name (without price)
-        quantity // quantity
+        quantityNumber // quantity
       );
       
       // Send notification to partner
@@ -148,7 +215,7 @@ export async function POST(request: NextRequest) {
         brandSettings.brandName, // brand name
         email, // customer email
         planName, // plan name (without price)
-        quantity, // quantity
+        quantityNumber, // quantity
         priceAmount // amount
       );
       
@@ -167,7 +234,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true,
       generatedItems,
-      message: `Payment processed successfully! ${quantity} secure links and QR codes have been generated and sent to your email. The partner has also been notified of your purchase.`
+      message: `Payment processed successfully! ${quantityNumber} secure links and QR codes have been generated and sent to your email. The partner has also been notified of your purchase.`
     });
 
   } catch (error) {

@@ -27,6 +27,7 @@ import {
   Settings
 } from "lucide-react";
 import { toast } from "sonner";
+import { useUploadThing } from "@/lib/uploadthing-hooks";
 
 // Website style definitions
 const websiteStyles = [
@@ -240,6 +241,54 @@ export default function BrandingEditor({
   });
 
   const [activeSection, setActiveSection] = useState("layout");
+
+  // Logo upload functionality
+  const { startUpload: startLogoUpload, isUploading: isUploadingLogo } = useUploadThing("brandLogoUploader", {
+    onClientUploadComplete: (res) => {
+      if (res && res.length > 0) {
+        const uploadedFile = res[0];
+        console.log('✅ LOGO UPLOAD: Upload successful:', uploadedFile);
+        
+        // Update the logo URL in settings
+        setSettings(prev => ({
+          ...prev,
+          logoUrl: uploadedFile.url
+        }));
+        
+        toast.success('Logo uploaded successfully!');
+      }
+    },
+    onUploadError: (error) => {
+      console.error('❌ LOGO UPLOAD: Upload failed:', error);
+      toast.error('Failed to upload logo. Please try again.');
+    }
+  });
+
+  const handleLogoUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+
+    const file = files[0];
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (4MB limit)
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error('File size must be less than 4MB');
+      return;
+    }
+
+    try {
+      console.log('🔍 LOGO UPLOAD: Starting logo upload...');
+      await startLogoUpload([file]);
+    } catch (error) {
+      console.error('❌ LOGO UPLOAD: Error uploading logo:', error);
+      toast.error('Failed to upload logo');
+    }
+  };
 
   // Sync component state with prop changes
   useEffect(() => {
@@ -579,10 +628,41 @@ export default function BrandingEditor({
                     )}
                   </div>
                   <div className="space-y-2">
-                    <Button variant="outline" size="sm">
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload Logo
-                    </Button>
+                    <input
+                      type="file"
+                      id="logo-upload"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const files = e.target.files;
+                        if (files && files.length > 0) {
+                          handleLogoUpload(Array.from(files));
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <label htmlFor="logo-upload">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={isUploadingLogo}
+                        className="cursor-pointer"
+                        asChild
+                      >
+                        <span>
+                          {isUploadingLogo ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Uploading...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="mr-2 h-4 w-4" />
+                              Upload Logo
+                            </>
+                          )}
+                        </span>
+                      </Button>
+                    </label>
                     {settings.logoUrl && (
                       <Button 
                         variant="ghost" 

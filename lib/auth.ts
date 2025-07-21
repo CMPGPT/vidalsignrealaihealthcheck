@@ -105,6 +105,7 @@ export async function authorizeUser(credentials: any) {
       name: `${firstName} ${lastName}`,
       email: credentials.email,
       unique_id: user.unique_id,
+      partnerId: (user as any)._id.toString(), // Add the MongoDB _id as partnerId
     };
 
     console.log('🎉 AUTH DEBUG: Authorization successful!');

@@ -1,13 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+export const dynamic = 'force-dynamic';
+
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Download, QrCode, Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function PaymentSuccessPage() {
+// Separate component that uses useSearchParams
+function PaymentSuccessContent() {
   const searchParams = useSearchParams();
   const [isProcessing, setIsProcessing] = useState(true);
   const [generatedItems, setGeneratedItems] = useState<{
@@ -20,6 +23,9 @@ export default function PaymentSuccessPage() {
   const email = searchParams.get('email');
   const plan = searchParams.get('plan');
   const quantity = searchParams.get('quantity');
+  // Try to get the original website path from the URL (brand or id)
+  // If brand is a slug or id, use it to construct the return URL
+  const websiteUrl = brand ? `/partnerswebsite/${encodeURIComponent(brand)}` : '/';
 
   useEffect(() => {
     const processPayment = async () => {
@@ -27,19 +33,53 @@ export default function PaymentSuccessPage() {
         console.log('🔍 PAYMENT SUCCESS: Processing payment for session:', sessionId);
         console.log('🔍 PAYMENT SUCCESS: Request data:', { sessionId, brand, email, plan, quantity });
         
-        const response = await fetch('/api/process-customer-purchase', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            sessionId,
-            brand,
-            email,
-            plan,
-            quantity: parseInt(quantity || '1'),
-          }),
+        // Check if this session has already been processed
+        const processedSessions = JSON.parse(sessionStorage.getItem('processedPaymentSessions') || '[]');
+        if (processedSessions.includes(sessionId)) {
+          console.log('✅ PAYMENT SUCCESS: Session already processed, skipping');
+          toast.info('Payment already processed. Your QR codes have been sent to your email.');
+          setIsProcessing(false);
+          return;
+        }
+        
+        console.log('🔍 PAYMENT SUCCESS: Calling API with data:', {
+          sessionId,
+          brand,
+          email,
+          plan,
+          quantity: quantity || '1 QR Code',
         });
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+        let response: Response;
+        try {
+          response = await fetch('/api/process-customer-purchase', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              sessionId,
+              brand,
+              email,
+              plan: plan || '', // Pass the exact plan string with price from URL
+              quantity: quantity || '1 QR Code',
+            }),
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+            throw new Error('Request timed out. Please try again.');
+          }
+          throw fetchError;
+        }
+
+        console.log('🔍 PAYMENT SUCCESS: API response status:', response.status);
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -48,8 +88,17 @@ export default function PaymentSuccessPage() {
 
         const data = await response.json();
         console.log('✅ PAYMENT SUCCESS: Response data:', data);
-        setGeneratedItems(data.generatedItems);
-        toast.success(data.message || 'Payment processed successfully!');
+        
+        if (data.alreadyProcessed) {
+          toast.info(data.message || 'Payment already processed. Your QR codes have been sent to your email.');
+        } else {
+          setGeneratedItems(data.generatedItems);
+          toast.success(data.message || 'Payment processed successfully!');
+          
+          // Mark this session as processed
+          processedSessions.push(sessionId);
+          sessionStorage.setItem('processedPaymentSessions', JSON.stringify(processedSessions));
+        }
         
       } catch (error) {
         console.error('❌ PAYMENT SUCCESS: Payment processing error:', error);
@@ -173,14 +222,44 @@ export default function PaymentSuccessPage() {
             <span>Check your email for secure links and QR codes</span>
           </div>
           
-          <Button 
-            onClick={() => window.history.back()}
-            variant="outline"
-          >
-            Back to Website
-          </Button>
+          <div className="flex gap-2 justify-center">
+            <Button 
+              onClick={() => window.location.href = websiteUrl}
+              variant="outline"
+            >
+              Back to Website
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   );
-} 
+}
+
+// Loading fallback component
+function PaymentSuccessLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-center">Loading Payment Details</CardTitle>
+        </CardHeader>
+        <CardContent className="text-center space-y-4">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-600" />
+          <p className="text-gray-600">
+            Please wait while we load your payment information...
+          </p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// Main component with Suspense boundary
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<PaymentSuccessLoading />}>
+      <PaymentSuccessContent />
+    </Suspense>
+  );
+}

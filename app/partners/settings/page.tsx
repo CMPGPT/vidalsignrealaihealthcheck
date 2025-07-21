@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CreditCard, FileText, Building, Globe, Loader2, Upload, Palette, Rocket, ExternalLink, Image } from "lucide-react";
+import { CreditCard, FileText, Building, Globe, Loader2, Upload, Palette, Rocket, ExternalLink, Image, TrendingUp, Users, DollarSign, RefreshCw } from "lucide-react";
 import { useSession } from 'next-auth/react';
 import { toast } from "sonner";
 import { useUploadThing } from "@/lib/uploadthing-hooks";
@@ -175,6 +175,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deploying, setDeploying] = useState(false);
+  const [billingData, setBillingData] = useState<any>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState('all');
   
   const { data: session, status } = useSession();
   
@@ -196,11 +199,34 @@ export default function SettingsPage() {
     },
   });
   
-  // Default partner ID - in a real app this would come from auth context
-  const partnerId = "P-001";
+  // Get partner ID from session (MongoDB _id)
+  const partnerId = (session?.user as any)?.partnerId || null;
+
+  // Fetch billing history
+  const fetchBillingHistory = async (period: string = 'all') => {
+    setBillingLoading(true);
+    try {
+      console.log('🔍 BILLING: Fetching billing history for partnerId:', partnerId);
+      const response = await fetch(`/api/partner-billing-history?partnerId=${partnerId}&period=${period}`);
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        console.log('✅ BILLING: Billing data received:', data.data);
+        setBillingData(data.data);
+      } else {
+        console.error('❌ BILLING: Failed to fetch billing history:', data.error);
+        toast.error('Failed to load billing history');
+      }
+    } catch (error) {
+      console.error('❌ BILLING: Error fetching billing history:', error);
+      toast.error('Failed to load billing history');
+    } finally {
+      setBillingLoading(false);
+    }
+  };
   
   // Get partner business info from centralized store (fallback)
-  const businessInfo = partnerBusinessInfo[partnerId] || {
+  const businessInfo = partnerBusinessInfo["P-001"] || {
     businessName: '',
     businessType: '',
     address: '',
@@ -210,7 +236,7 @@ export default function SettingsPage() {
   };
   
   // Get partner billing history from centralized store
-  const billingHistory = partnerBillingHistory[partnerId] || [];
+  const billingHistory = partnerBillingHistory["P-001"] || [];
 
   // Fetch user profile data and brand settings
   useEffect(() => {
@@ -280,7 +306,8 @@ export default function SettingsPage() {
     };
 
     fetchData();
-  }, [session, status]);
+    fetchBillingHistory();
+  }, [session, status, partnerId]);
 
   // Handle form input changes
   const handleInputChange = (field: keyof ProfileData, value: string) => {
@@ -761,53 +788,237 @@ export default function SettingsPage() {
               </div>
               
               <div>
-                <h3 className="font-medium mb-3">Usage & Limits</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <h3 className="font-medium mb-3">Revenue & Sales Overview</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                   <div className="p-4 border border-border rounded-lg bg-background">
-                    <div className="text-2xl font-bold text-brand-primary">0</div>
-                    <div className="text-sm text-muted-foreground">Secure Links Generated</div>
-                  </div>
-                  <div className="p-4 border border-border rounded-lg bg-background">
-                    <div className="text-2xl font-bold text-brand-secondary">0</div>
-                    <div className="text-sm text-muted-foreground">QR Codes Created</div>
-                  </div>
-                  <div className="p-4 border border-border rounded-lg bg-background">
-                    <div className="text-2xl font-bold text-brand-accent">$0.00</div>
+                    <div className="text-2xl font-bold text-green-600">
+                      ${billingData?.statistics?.totalRevenue?.toFixed(2) || '0.00'}
+                    </div>
                     <div className="text-sm text-muted-foreground">Total Revenue</div>
+                  </div>
+                  <div className="p-4 border border-border rounded-lg bg-background">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {billingData?.statistics?.totalSales || 0}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Total Sales</div>
+                  </div>
+                  <div className="p-4 border border-border rounded-lg bg-background">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {billingData?.statistics?.totalCustomers || 0}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Unique Customers</div>
+                  </div>
+                  <div className="p-4 border border-border rounded-lg bg-background">
+                    <div className="text-2xl font-bold text-orange-600">
+                      ${billingData?.statistics?.totalSpent?.toFixed(2) || '0.00'}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Total Spent</div>
                   </div>
                 </div>
               </div>
               
               <div>
-                <h3 className="font-medium mb-3">Billing History</h3>
-                <div className="border border-border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Amount</TableHead>
-                        <TableHead className="text-right">Invoice</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {billingHistory.map(invoice => (
-                        <TableRow key={invoice.id}>
-                          <TableCell>{invoice.date}</TableCell>
-                          <TableCell>{invoice.description}</TableCell>
-                          <TableCell>${invoice.amount.toFixed(2)}</TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="sm">
-                              <FileText className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium">Transaction History</h3>
+                  <div className="flex items-center gap-2">
+                    <select 
+                      value={billingPeriod} 
+                      onChange={(e) => {
+                        setBillingPeriod(e.target.value);
+                        fetchBillingHistory(e.target.value);
+                      }}
+                      className="px-3 py-1 border border-border rounded-md text-sm"
+                    >
+                      <option value="all">All Time</option>
+                      <option value="month">This Month</option>
+                      <option value="year">This Year</option>
+                    </select>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={async () => {
+                        setBillingLoading(true);
+                        try {
+                          const response = await fetch(`/api/refresh-billing-data?partnerId=${partnerId}`);
+                          if (response.ok) {
+                            toast.success('Billing data refreshed successfully');
+                            // Refetch billing history after refresh
+                            fetchBillingHistory(billingPeriod);
+                          } else {
+                            toast.error('Failed to refresh billing data');
+                          }
+                        } catch (error) {
+                          console.error('Error refreshing billing data:', error);
+                          toast.error('Failed to refresh billing data');
+                        } finally {
+                          setBillingLoading(false);
+                        }
+                      }}
+                      className="flex items-center gap-1"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Refresh
+                    </Button>
+                  </div>
                 </div>
+                
+                {billingLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="border border-border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Customer/Plan</TableHead>
+                          <TableHead>Quantity</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {billingData?.transactions?.length > 0 ? (
+                          billingData.transactions.map((transaction: any) => (
+                            <TableRow key={transaction.id}>
+                              <TableCell>
+                                {new Date(transaction.date).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  transaction.type === 'sale' 
+                                    ? 'bg-green-100 text-green-800' 
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}>
+                                  {transaction.type === 'sale' ? 'Sale' : 'Purchase'}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                {transaction.type === 'sale' 
+                                  ? transaction.customerEmail 
+                                  : transaction.planName
+                                }
+                              </TableCell>
+                              <TableCell>
+                                {transaction.type === 'sale' 
+                                  ? transaction.quantity 
+                                  : '-'
+                                }
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                <span className={transaction.type === 'sale' ? 'text-green-600' : 'text-blue-600'}>
+                                  ${transaction.amount?.toFixed(2) || '0.00'}
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                              No transactions found
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </div>
+              
+              {/* Monthly Revenue Chart */}
+              {billingData?.monthlyStats?.length > 0 && (
+                <div>
+                  <h3 className="font-medium mb-3">Monthly Revenue Trend</h3>
+                  <div className="border border-border rounded-lg p-4 bg-background">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {billingData.monthlyStats.slice(0, 6).map((stat: any, index: number) => {
+                        const monthNames = [
+                          'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                          'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                        ];
+                        const monthName = monthNames[stat._id.month - 1];
+                        const year = stat._id.year;
+                        
+                        return (
+                          <div key={index} className="p-3 border border-border rounded-lg">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-muted-foreground">
+                                {monthName} {year}
+                              </span>
+                              <TrendingUp className="h-4 w-4 text-green-600" />
+                            </div>
+                            <div className="text-lg font-bold text-green-600">
+                              ${stat.revenue?.toFixed(2) || '0.00'}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {stat.count} sales
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Customer Insights */}
+              {billingData?.statistics?.totalCustomers > 0 && (
+                <div>
+                  <h3 className="font-medium mb-3">Customer Insights</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="border border-border rounded-lg p-4 bg-background">
+                      <div className="flex items-center gap-3 mb-3">
+                        <Users className="h-5 w-5 text-blue-600" />
+                        <h4 className="font-medium">Customer Overview</h4>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Total Customers:</span>
+                          <span className="font-medium">{billingData.statistics.totalCustomers}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Average Revenue per Customer:</span>
+                          <span className="font-medium">
+                            ${(billingData.statistics.totalRevenue / billingData.statistics.totalCustomers).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Total Sales:</span>
+                          <span className="font-medium">{billingData.statistics.totalSales}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="border border-border rounded-lg p-4 bg-background">
+                      <div className="flex items-center gap-3 mb-3">
+                        <DollarSign className="h-5 w-5 text-green-600" />
+                        <h4 className="font-medium">Revenue Summary</h4>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Total Revenue:</span>
+                          <span className="font-medium text-green-600">
+                            ${billingData.statistics.totalRevenue?.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Total Spent:</span>
+                          <span className="font-medium text-orange-600">
+                            ${billingData.statistics.totalSpent?.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Net Profit:</span>
+                          <span className="font-medium text-blue-600">
+                            ${(billingData.statistics.totalRevenue - billingData.statistics.totalSpent).toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

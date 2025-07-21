@@ -95,10 +95,11 @@ const handler = NextAuth({
       
       await dbConnect();
       
-      // If user object exists (first login), store the unique_id in token
+      // If user object exists (first login), store the unique_id and partnerId in token
       if (user && (user as any).unique_id) {
         console.log('🔍 NEXTAUTH DEBUG: Storing unique_id from user object:', (user as any).unique_id);
         token.unique_id = (user as any).unique_id;
+        token.partnerId = (user as any).partnerId || (user as any).id; // Store the MongoDB _id as partnerId
         token.email = user.email;
         token.name = user.name;
       }
@@ -138,7 +139,8 @@ const handler = NextAuth({
         
         if (partnerUser) {
           token.unique_id = partnerUser.unique_id;
-          console.log('✅ NEXTAUTH DEBUG: Added unique_id to token:', partnerUser.unique_id);
+          token.partnerId = (partnerUser as any)._id.toString(); // Store the MongoDB _id as partnerId
+          console.log('✅ NEXTAUTH DEBUG: Added unique_id and partnerId to token:', partnerUser.unique_id, (partnerUser as any)._id.toString());
         } else {
           console.log('❌ NEXTAUTH DEBUG: Could not find user in database');
         }
@@ -154,7 +156,8 @@ const handler = NextAuth({
       
       if (session.user) {
         (session.user as any).unique_id = token.unique_id;
-        console.log('✅ NEXTAUTH DEBUG: Added unique_id to session');
+        (session.user as any).partnerId = token.partnerId; // Add partnerId to session
+        console.log('✅ NEXTAUTH DEBUG: Added unique_id and partnerId to session');
       }
       return session;
     },

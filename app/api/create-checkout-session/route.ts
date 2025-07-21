@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import dbConnect from '@/lib/dbConnect';
 import BrandSettings from '@/models/BrandSettings';
 import PartnerUser from '@/models/PartnerUser';
+import { SecureLink } from '@/models/SecureLink';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-06-30.basil',
@@ -13,7 +14,7 @@ export async function POST(request: NextRequest) {
     console.log('🔍 CHECKOUT: Starting checkout session creation');
     
     const body = await request.json();
-    const { plan, price, quantity, email, brandName } = body;
+    const { plan, price, quantity, email, brandName, source } = body;
 
     console.log('🔍 CHECKOUT: Creating session for:', { plan, price, quantity, email, brandName });
 
@@ -66,6 +67,29 @@ export async function POST(request: NextRequest) {
     }
     console.log('✅ CHECKOUT: Partner user found:', partnerUser.email);
 
+    // Extract quantity number from string like "10 QR Codes"
+    const quantityNumber = parseInt(quantity?.match(/\d+/)?.[0] || '1');
+
+    // Check if partner has enough secure links available
+    console.log('🔍 CHECKOUT: Checking secure link availability for quantity:', quantityNumber);
+    const availableSecureLinks = await SecureLink.countDocuments({
+      partnerId: brandSettings.userId,
+      isUsed: false,
+      'metadata.sold': { $ne: true }
+    });
+
+    console.log('🔍 CHECKOUT: Available secure links:', availableSecureLinks, 'for partner:', brandSettings.userId);
+
+    if (availableSecureLinks < quantityNumber) {
+      console.log('❌ CHECKOUT: Not enough secure links available');
+      console.log('❌ CHECKOUT: Available:', availableSecureLinks, 'Requested:', quantityNumber);
+      return NextResponse.json({ 
+        error: `Sorry, only ${availableSecureLinks} QR codes are currently available. Please try a smaller quantity or contact the seller.` 
+      }, { status: 400 });
+    }
+
+    console.log('✅ CHECKOUT: Sufficient secure links available');
+
     // Check if partner has Stripe credentials
     if (!partnerUser.stripePublishableKey || !partnerUser.stripeSecretKey) {
       console.log('❌ CHECKOUT: Partner missing Stripe credentials');
@@ -74,13 +98,18 @@ export async function POST(request: NextRequest) {
         hasPublishableKey: !!partnerUser.stripePublishableKey,
         hasSecretKey: !!partnerUser.stripeSecretKey
       });
-      
-      // For testing purposes, use the main Stripe account if partner doesn't have credentials
+
+      // If the request is from the website, do NOT fall back to the global Stripe key
+      if (source === 'website') {
+        return NextResponse.json({ error: 'This partner has not set up Stripe payments. Please contact the partner or try again later.' }, { status: 400 });
+      }
+
+      // For other flows, fall back to the main Stripe account (for testing)
       console.log('🔍 CHECKOUT: Using main Stripe account for testing');
       const testStripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
         apiVersion: '2025-06-30.basil',
       });
-      
+
       // Parse price to get amount in cents
       const priceAmount = parseFloat(price?.replace(/[^0-9.]/g, '') || '0');
       const amountInCents = Math.round(priceAmount * 100);
@@ -90,9 +119,6 @@ export async function POST(request: NextRequest) {
         console.error('❌ CHECKOUT: Invalid price amount:', priceAmount);
         return NextResponse.json({ error: 'Invalid price amount' }, { status: 400 });
       }
-
-      // Extract quantity number from string like "10 QR Codes"
-      const quantityNumber = parseInt(quantity?.match(/\d+/)?.[0] || '1');
 
       console.log('🔍 CHECKOUT: Creating Stripe session with test account');
       console.log('🔍 CHECKOUT: Session params:', {
@@ -119,7 +145,7 @@ export async function POST(request: NextRequest) {
           },
         ],
         mode: 'payment',
-        success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-success?session_id={CHECKOUT_SESSION_ID}&brand=${encodeURIComponent(brandName)}&email=${encodeURIComponent(email)}&plan=${encodeURIComponent(plan)}&quantity=${quantityNumber}`,
+        success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-success?session_id={CHECKOUT_SESSION_ID}&brand=${encodeURIComponent(brandName)}&email=${encodeURIComponent(email)}&plan=${encodeURIComponent(plan)}&quantity=${encodeURIComponent(quantity)}`,
         cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-cancel?brand=${encodeURIComponent(brandName)}`,
         customer_email: email,
         metadata: {
@@ -153,9 +179,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid price amount' }, { status: 400 });
     }
 
-    // Extract quantity number from string like "10 QR Codes"
-    const quantityNumber = parseInt(quantity?.match(/\d+/)?.[0] || '1');
-
     console.log('🔍 CHECKOUT: Creating Stripe session with partner account');
     console.log('🔍 CHECKOUT: Session params:', {
       amountInCents,
@@ -181,7 +204,7 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-success?session_id={CHECKOUT_SESSION_ID}&brand=${encodeURIComponent(brandName)}&email=${encodeURIComponent(email)}&plan=${encodeURIComponent(plan)}&quantity=${quantityNumber}`,
+              success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-success?session_id={CHECKOUT_SESSION_ID}&brand=${encodeURIComponent(brandName)}&email=${encodeURIComponent(email)}&plan=${encodeURIComponent(plan)}&quantity=${encodeURIComponent(quantity)}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-cancel?brand=${encodeURIComponent(brandName)}`,
       customer_email: email,
       metadata: {
@@ -204,7 +227,7 @@ export async function POST(request: NextRequest) {
     console.error('❌ CHECKOUT: Error creating session:', error);
     
     // Provide more specific error messages
-    let errorMessage = 'Failed to create checkout session';
+    let errorMessage = 'Encountering unknown error. Please try again later.';
     
     if (error instanceof Error) {
       console.error('❌ CHECKOUT: Error details:', {
@@ -218,8 +241,10 @@ export async function POST(request: NextRequest) {
         errorMessage = 'Database connection error. Please try again.';
       } else if (error.message.includes('MongoDB')) {
         errorMessage = 'Database connection error. Please try again.';
+      } else if (error.message.includes('secure links')) {
+        errorMessage = error.message; // Use the specific secure links error message
       } else {
-        errorMessage = error.message;
+        errorMessage = 'Encountering unknown error. Please try again later.';
       }
     }
     

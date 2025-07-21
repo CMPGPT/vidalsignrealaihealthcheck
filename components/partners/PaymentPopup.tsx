@@ -74,6 +74,7 @@ export default function PaymentPopup({
           quantity: plan.quantity,
           email: email,
           brandName: brandName,
+          source: 'website', // Add this flag
         }),
       });
 
@@ -81,6 +82,7 @@ export default function PaymentPopup({
       console.log('🔍 PAYMENT: Response:', data);
 
       if (!response.ok) {
+        console.error('❌ PAYMENT: Response error:', data);
         throw new Error(data.error || 'Failed to create checkout session');
       }
 
@@ -94,7 +96,9 @@ export default function PaymentPopup({
       
     } catch (error) {
       console.error('❌ PAYMENT: Error:', error);
-      toast.error(error instanceof Error ? error.message : 'Payment failed. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Payment failed. Please try again.';
+      console.error('❌ PAYMENT: Error message:', errorMessage);
+      toast.error(errorMessage);
       setIsLoading(false);
     }
   };

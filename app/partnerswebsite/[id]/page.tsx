@@ -162,7 +162,13 @@ export default function PartnerWebsitePage() {
         <PaymentPopup
           isOpen={paymentPopup.isOpen}
           onClose={() => setPaymentPopup({ isOpen: false, plan: null })}
-          plan={paymentPopup.plan}
+          plan={{
+            ...paymentPopup.plan,
+            // Ensure price has $ symbol
+            price: paymentPopup.plan.price.startsWith('$') 
+              ? paymentPopup.plan.price 
+              : `$${paymentPopup.plan.price}`
+          }}
           brandName={brandSettings.brandName}
           brandColors={brandSettings.customColors}
         />

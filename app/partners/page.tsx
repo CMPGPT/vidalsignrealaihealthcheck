@@ -8,13 +8,14 @@ import { useSession, signOut } from 'next-auth/react';
 
 function PartnerDashboardContent() {
   const searchParams = useSearchParams();
-  // Default partner ID - in a real app, this would come from authentication context
-  const partnerId = "P-001";
   const { data: session, status } = useSession();
 
   console.log('🔍 PARTNERS PAGE DEBUG: ========== Partners Page Loaded ==========');
   console.log('🔍 PARTNERS PAGE DEBUG: Session status:', status);
   console.log('🔍 PARTNERS PAGE DEBUG: Session data:', session);
+  
+  // Get partner ID from session (MongoDB _id)
+  const partnerId = (session?.user as any)?.partnerId || null;
   
   return (
     <div>

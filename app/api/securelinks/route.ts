@@ -20,10 +20,12 @@ export async function GET(request: NextRequest) {
       filter.isUsed = true;
     } else if (status === 'unused') {
       filter.isUsed = false;
+      filter['metadata.sold'] = { $ne: true }; // Only show unsold unused links
     } else if (status === 'sold') {
       filter['metadata.sold'] = true;
     } else if (status === 'unsold') {
-      filter['metadata.sold'] = { $ne: true };
+      filter.isUsed = false;
+      filter['metadata.sold'] = { $ne: true }; // Show unsold unused links
     }
 
     // Calculate skip value for pagination
@@ -33,9 +35,9 @@ export async function GET(request: NextRequest) {
     const [totalCount, usedCount, unusedCount, soldCount, unsoldCount] = await Promise.all([
       SecureLink.countDocuments({ partnerId }),
       SecureLink.countDocuments({ partnerId, isUsed: true }),
-      SecureLink.countDocuments({ partnerId, isUsed: false }),
+      SecureLink.countDocuments({ partnerId, isUsed: false, 'metadata.sold': { $ne: true } }),
       SecureLink.countDocuments({ partnerId, 'metadata.sold': true }),
-      SecureLink.countDocuments({ partnerId, 'metadata.sold': { $ne: true } })
+      SecureLink.countDocuments({ partnerId, isUsed: false, 'metadata.sold': { $ne: true } })
     ]);
 
     // Get paginated secure links

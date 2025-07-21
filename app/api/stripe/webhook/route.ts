@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import dbConnect from '@/lib/dbConnect';
 import { SecureLink } from '@/models/SecureLink';
 import { PaymentHistory } from '@/models/PaymentHistory';
+import { PartnerTransaction } from '@/models/PartnerTransaction';
 import { v4 as uuidv4 } from 'uuid';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -57,6 +58,26 @@ export async function POST(request: NextRequest) {
           paymentDate: new Date(),
           stripeSessionId: session.id,
           stripePaymentIntentId: session.payment_intent as string
+        });
+
+        // Create PartnerTransaction record for this purchase
+        await PartnerTransaction.create({
+          partnerId,
+          transactionType: 'purchase',
+          transactionId,
+          planName: packageName || 'QR Code Package',
+          planPrice: amount,
+          quantity: count,
+          totalAmount: amount,
+          currency: session.currency?.toUpperCase() || 'USD',
+          paymentMethod: 'stripe',
+          status: 'completed',
+          transactionDate: new Date(),
+          metadata: {
+            stripeSessionId: session.id,
+            stripePaymentIntentId: session.payment_intent as string,
+            notes: `Partner purchase: ${packageName} - ${count} QR codes`
+          }
         });
         
         // Generate the specified number of secure links

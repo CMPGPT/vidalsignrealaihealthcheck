@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -16,63 +16,136 @@ import {
   QrCode, 
   CheckCircle2, 
   Calendar, 
-  BarChart3
+  BarChart3,
+  DollarSign,
+  Activity,
+  Link
 } from "lucide-react";
-// Import centralized data
-import { 
-  qrActivityData, 
-  partnerMetricsData, 
-  daysOfWeekData, 
-  timeOfDayData, 
-  channelData, 
-  CHART_COLORS,
-  performanceData
-} from "@/data/mock/partnerUsers";
+import { useToast } from "@/hooks/use-toast";
 
 // Default partner ID - in a real app this would come from auth context
-const DEFAULT_PARTNER_ID = "P-001";
+const DEFAULT_PARTNER_ID = "686aa71d7848ed9baed37c7f";
 
 interface AnalyticsDashboardProps {
   className?: string;
   partnerId?: string;
 }
 
+interface AnalyticsData {
+  overview: {
+    revenue: {
+      current: number;
+      previous: number;
+      growth: number;
+      currency: string;
+    };
+    transactions: {
+      current: number;
+      previous: number;
+      growth: number;
+    };
+    customers: {
+      current: number;
+      previous: number;
+      growth: number;
+    };
+    qrCodes: {
+      total: number;
+      used: number;
+      available: number;
+      usageRate: number;
+    };
+    secureLinks: {
+      total: number;
+      used: number;
+      active: number;
+      usageRate: number;
+    };
+  };
+  trends: {
+    monthly: any[];
+    daily: any[];
+    qrUsage: any[];
+  };
+  performance: {
+    topPlans: any[];
+    customerInsights: any[];
+  };
+}
+
 export function AnalyticsDashboard({ className, partnerId = DEFAULT_PARTNER_ID }: AnalyticsDashboardProps) {
   const [timeRange, setTimeRange] = useState("last30days");
   const [activeTab, setActiveTab] = useState("overview");
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
-  // Get partner-specific data
-  const monthlyData = qrActivityData[partnerId] || [];
-  const metrics = partnerMetricsData[partnerId] || {
-    qrCodes: { total: 0, available: 0, used: 0, growthRate: 0 },
-    customers: { total: 0, active: 0, new: 0, growthRate: 0 },
-    redemptions: { total: 0, thisMonth: 0, lastMonth: 0, growthRate: 0 }
+  // Fetch analytics data
+  const fetchAnalytics = async () => {
+    setLoading(true);
+    try {
+      console.log('🔍 ANALYTICS: Fetching analytics for partnerId:', partnerId);
+      const response = await fetch(`/api/partner-analytics?partnerId=${partnerId}&timeRange=${timeRange}`);
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        console.log('✅ ANALYTICS: Analytics data received:', data.data);
+        setAnalyticsData(data.data);
+      } else {
+        console.error('❌ ANALYTICS: Failed to fetch analytics:', data.error);
+        toast({
+          title: "Error",
+          description: "Failed to load analytics data",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('❌ ANALYTICS: Error fetching analytics:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load analytics data",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Calculate summary stats
-  const totalScans = monthlyData.reduce((sum, month) => sum + month.scans, 0);
-  const totalRedemptions = metrics.redemptions.total;
-  const activeUsers = metrics.customers.active;
-  const conversionRate = totalScans > 0 ? parseFloat((totalRedemptions / totalScans * 100).toFixed(1)) : 0;
+  useEffect(() => {
+    fetchAnalytics();
+  }, [partnerId, timeRange]);
 
-  // Growth rates from metrics
-  const scanGrowth = monthlyData.length >= 2 ? 
-    parseFloat(((monthlyData[monthlyData.length-1].scans / monthlyData[monthlyData.length-2].scans - 1) * 100).toFixed(1)) : 
-    parseFloat(metrics.qrCodes.growthRate.toFixed(1));
-  const redemptionGrowth = parseFloat(metrics.redemptions.growthRate.toFixed(1));
-  const userGrowth = parseFloat(metrics.customers.growthRate.toFixed(1));
+  if (loading) {
+    return (
+      <div className={className}>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading analytics...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  // String versions for template literals
-  const scanGrowthStr = scanGrowth.toString();
-  const redemptionGrowthStr = redemptionGrowth.toString();
-  const userGrowthStr = userGrowth.toString();
+  if (!analyticsData) {
+    return (
+      <div className={className}>
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">No analytics data available</p>
+        </div>
+      </div>
+    );
+  }
+
+  const { overview, trends, performance } = analyticsData;
 
   return (
     <div className={className}>
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
         <div>
-        
-     
+          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+          <p className="text-muted-foreground">Track your business performance and insights</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={timeRange} onValueChange={setTimeRange}>
@@ -97,30 +170,30 @@ export function AnalyticsDashboard({ className, partnerId = DEFAULT_PARTNER_ID }
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Total Redemptions</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Total Revenue</p>
                 <div className="flex items-baseline">
-                  <h3 className="text-2xl font-bold">{totalRedemptions.toLocaleString()}</h3>
-                  <Badge className={`ml-2 ${redemptionGrowth >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'} hover:bg-emerald-100`}>
+                  <h3 className="text-2xl font-bold">${overview.revenue.current.toFixed(2)}</h3>
+                  <Badge className={`ml-2 ${overview.revenue.growth >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'} hover:bg-emerald-100`}>
                     <ArrowUpRight className="h-3 w-3 mr-1" />
-                    {redemptionGrowth}%
+                    {overview.revenue.growth.toFixed(1)}%
                   </Badge>
                 </div>
               </div>
               <div className="p-2 bg-primary/10 rounded-full">
-                <CheckCircle2 className="h-5 w-5 text-primary" />
+                <DollarSign className="h-5 w-5 text-primary" />
               </div>
             </div>
             <div className="mt-3">
               <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                <div className="bg-primary h-1.5" style={{ width: `${Math.min(Math.max(parseFloat(redemptionGrowthStr) + 80, 0), 100)}%` }}></div>
+                <div className="bg-primary h-1.5" style={{ width: `${Math.min(Math.max(overview.revenue.growth + 80, 0), 100)}%` }}></div>
               </div>
               <p className="text-xs text-muted-foreground mt-1.5">
-                {redemptionGrowth}% growth from previous period
+                {overview.revenue.growth.toFixed(1)}% growth from previous period
               </p>
             </div>
           </CardContent>
@@ -130,12 +203,40 @@ export function AnalyticsDashboard({ className, partnerId = DEFAULT_PARTNER_ID }
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Active Users</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Total Transactions</p>
                 <div className="flex items-baseline">
-                  <h3 className="text-2xl font-bold">{activeUsers.toLocaleString()}</h3>
-                  <Badge className={`ml-2 ${userGrowth >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'} hover:bg-emerald-100`}>
+                  <h3 className="text-2xl font-bold">{overview.transactions.current}</h3>
+                  <Badge className={`ml-2 ${overview.transactions.growth >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'} hover:bg-emerald-100`}>
                     <ArrowUpRight className="h-3 w-3 mr-1" />
-                    {userGrowth}%
+                    {overview.transactions.growth.toFixed(1)}%
+                  </Badge>
+                </div>
+              </div>
+              <div className="p-2 bg-primary/10 rounded-full">
+                <Activity className="h-5 w-5 text-primary" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <div className="bg-primary h-1.5" style={{ width: `${Math.min(Math.max(overview.transactions.growth + 80, 0), 100)}%` }}></div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                {overview.transactions.growth.toFixed(1)}% growth from previous period
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-1">Unique Customers</p>
+                <div className="flex items-baseline">
+                  <h3 className="text-2xl font-bold">{overview.customers.current}</h3>
+                  <Badge className={`ml-2 ${overview.customers.growth >= 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'} hover:bg-emerald-100`}>
+                    <ArrowUpRight className="h-3 w-3 mr-1" />
+                    {overview.customers.growth.toFixed(1)}%
                   </Badge>
                 </div>
               </div>
@@ -145,38 +246,38 @@ export function AnalyticsDashboard({ className, partnerId = DEFAULT_PARTNER_ID }
             </div>
             <div className="mt-3">
               <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                <div className="bg-primary h-1.5" style={{ width: `${Math.min(Math.max(parseFloat(userGrowthStr) + 80, 0), 100)}%` }}></div>
+                <div className="bg-primary h-1.5" style={{ width: `${Math.min(Math.max(overview.customers.growth + 80, 0), 100)}%` }}></div>
               </div>
               <p className="text-xs text-muted-foreground mt-1.5">
-                {userGrowth}% growth from previous period
+                {overview.customers.growth.toFixed(1)}% growth from previous period
               </p>
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">Conversion Rate</p>
+                <p className="text-sm font-medium text-muted-foreground mb-1">QR Code Usage</p>
                 <div className="flex items-baseline">
-                  <h3 className="text-2xl font-bold">{conversionRate}%</h3>
-                  <Badge className="ml-2 bg-emerald-100 text-emerald-800 hover:bg-emerald-100">
-                    <TrendingUp className="h-3 w-3 mr-1" />
-                    2.4%
+                  <h3 className="text-2xl font-bold">{overview.qrCodes.usageRate.toFixed(1)}%</h3>
+                  <Badge className="ml-2 bg-blue-100 text-blue-800 hover:bg-blue-100">
+                    <QrCode className="h-3 w-3 mr-1" />
+                    {overview.qrCodes.used}/{overview.qrCodes.total}
                   </Badge>
                 </div>
               </div>
               <div className="p-2 bg-primary/10 rounded-full">
-                <BarChart3 className="h-5 w-5 text-primary" />
+                <QrCode className="h-5 w-5 text-primary" />
               </div>
             </div>
             <div className="mt-3">
               <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                <div className="bg-primary h-1.5" style={{ width: `${Math.min(conversionRate, 100)}%` }}></div>
+                <div className="bg-primary h-1.5" style={{ width: `${overview.qrCodes.usageRate}%` }}></div>
               </div>
               <p className="text-xs text-muted-foreground mt-1.5">
-                2.4% increase from previous period
+                {overview.qrCodes.used} used out of {overview.qrCodes.total} total
               </p>
             </div>
           </CardContent>
@@ -185,24 +286,23 @@ export function AnalyticsDashboard({ className, partnerId = DEFAULT_PARTNER_ID }
       
       {/* Tabs for different analytics views */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid grid-cols-3 md:w-[400px]">
+        <TabsList className="grid grid-cols-2 md:w-[300px]">
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="customers">Customers</TabsTrigger>
         </TabsList>
         
         <TabsContent value="overview" className="space-y-4">
-          {/* Monthly Trends */}
+          {/* Monthly Revenue Trends */}
           <Card>
             <CardHeader>
-              <CardTitle>Monthly Trends</CardTitle>
-              <CardDescription>QR scans and redemptions over the past months</CardDescription>
+              <CardTitle>Monthly Revenue Trends</CardTitle>
+              <CardDescription>Revenue and transactions over the past 6 months</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart
-                    data={monthlyData}
+                    data={trends.monthly}
                     margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" />
@@ -210,35 +310,35 @@ export function AnalyticsDashboard({ className, partnerId = DEFAULT_PARTNER_ID }
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Area type="monotone" dataKey="scans" stackId="1" stroke="#8884d8" fill="#8884d8" />
-                    <Area type="monotone" dataKey="redemptions" stackId="2" stroke="#82ca9d" fill="#82ca9d" />
+                    <Area type="monotone" dataKey="revenue" stackId="1" stroke="#8884d8" fill="#8884d8" />
+                    <Area type="monotone" dataKey="transactions" stackId="2" stroke="#82ca9d" fill="#82ca9d" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
           
-          {/* Day of Week & Time of Day */}
+          {/* QR Code Usage Analytics */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
               <CardHeader>
-                <CardTitle>Activity by Day of Week</CardTitle>
-                <CardDescription>When your users are most active</CardDescription>
+                <CardTitle>QR Code Usage</CardTitle>
+                <CardDescription>QR code creation and usage over time</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[250px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={daysOfWeekData}
+                      data={trends.qrUsage}
                       margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
+                      <XAxis dataKey="month" />
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="scans" fill="#8884d8" />
-                      <Bar dataKey="redemptions" fill="#82ca9d" />
+                      <Bar dataKey="totalCreated" fill="#8884d8" />
+                      <Bar dataKey="totalUsed" fill="#82ca9d" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -247,119 +347,59 @@ export function AnalyticsDashboard({ className, partnerId = DEFAULT_PARTNER_ID }
             
             <Card>
               <CardHeader>
-                <CardTitle>Activity by Time of Day</CardTitle>
-                <CardDescription>Hourly distribution of activity</CardDescription>
+                <CardTitle>Secure Links</CardTitle>
+                <CardDescription>Secure link usage statistics</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[250px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={timeOfDayData}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="name" />
-                      <YAxis />
-                      <Tooltip />
-                      <Legend />
-                      <Line type="monotone" dataKey="scans" stroke="#8884d8" activeDot={{ r: 8 }} />
-                    </LineChart>
-                  </ResponsiveContainer>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Total Links</span>
+                    <span className="font-semibold">{overview.secureLinks.total}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Used Links</span>
+                    <span className="font-semibold">{overview.secureLinks.used}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Active Links</span>
+                    <span className="font-semibold">{overview.secureLinks.active}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Usage Rate</span>
+                    <span className="font-semibold">{overview.secureLinks.usageRate.toFixed(1)}%</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
           </div>
-          
-          {/* Traffic Sources */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Traffic Sources</CardTitle>
-              <CardDescription>Where your QR scans are coming from</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px] flex items-center justify-center">
-                <div className="w-full md:w-1/2 h-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={channelData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      >
-                        {channelData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="hidden md:block w-1/2">
-                  <div className="space-y-2">
-                    {channelData.map((item, index) => (
-                      <div key={index} className="flex items-center">
-                        <div 
-                          className="w-3 h-3 rounded-full mr-2" 
-                          style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
-                        />
-                        <span className="text-sm">{item.name}: {item.value}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="performance" className="space-y-4">
-          {/* Performance Metrics */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Metrics</CardTitle>
-              <CardDescription>Key performance indicators</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={performanceData}>
-                    <PolarGrid />
-                    <PolarAngleAxis dataKey="metric" />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} />
-                    <Radar name="Performance" dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
-                    <Tooltip />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* More performance metrics would go here */}
         </TabsContent>
         
         <TabsContent value="customers" className="space-y-4">
-          {/* Customer Demographics */}
+          {/* Customer Insights */}
           <Card>
             <CardHeader>
-              <CardTitle>Customer Demographics</CardTitle>
-              <CardDescription>Breakdown of your customer base</CardDescription>
+              <CardTitle>Top Customers</CardTitle>
+              <CardDescription>Your highest-value customers</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[300px]">
-                {/* Demographics chart would go here */}
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  Customer demographic data visualizations coming soon.
-                </div>
+              <div className="space-y-4">
+                {performance.customerInsights.map((customer, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <h4 className="font-semibold">{customer._id}</h4>
+                      <p className="text-sm text-muted-foreground">
+                        {customer.totalPurchases} purchases • Last: {new Date(customer.lastPurchase).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">${customer.totalSpent.toFixed(2)}</p>
+                      <p className="text-sm text-muted-foreground">total spent</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
-          
-          {/* More customer analytics would go here */}
         </TabsContent>
       </Tabs>
     </div>
