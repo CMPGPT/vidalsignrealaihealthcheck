@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import AuthCarousel from '@/components/auth/AuthCarousel';
 import { Button } from '@/components/ui/button';
 import { Eye, EyeOff } from 'lucide-react';
-import { signIn } from 'next-auth/react';
+import { signIn, getSession } from 'next-auth/react';
 import { Poppins, Raleway } from 'next/font/google';
 
 const poppins = Poppins({
@@ -79,9 +79,11 @@ export default function Login() {
         // Show success message
         setError('Login successful! Redirecting...');
         
-        // Force immediate redirect with window.location
-        console.log('🔍 LOGIN DEBUG: Force redirect using window.location');
-        window.location.href = '/partners';
+        // Force session update before redirect
+        await getSession();
+        setTimeout(() => {
+          window.location.href = '/partners';
+        }, 500);
       } else {
         console.log('❌ LOGIN DEBUG: Login failed');
         console.log('❌ LOGIN DEBUG: Error details:', result?.error);
