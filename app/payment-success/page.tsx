@@ -22,10 +22,34 @@ function PaymentSuccessContent() {
   const brand = searchParams.get('brand');
   const email = searchParams.get('email');
   const plan = searchParams.get('plan');
+  const price = searchParams.get('price');
+  const [planWithPrice, setPlanWithPrice] = useState<string | null>(price ? `${plan} - $${price}` : null);
   const quantity = searchParams.get('quantity');
   // Try to get the original website path from the URL (brand or id)
   // If brand is a slug or id, use it to construct the return URL
   const websiteUrl = brand ? `/partnerswebsite/${encodeURIComponent(brand)}` : '/';
+
+  useEffect(() => {
+    const fetchPlanPrice = async () => {
+      if (!planWithPrice && brand && plan) {
+        // Fetch brand settings to get the price for the plan
+        try {
+          const res = await fetch(`/api/brand-settings/public?brandId=${encodeURIComponent(brand)}`);
+          const data = await res.json();
+          if (data.success && data.brandSettings?.pricingSection?.plans) {
+            const foundPlan = data.brandSettings.pricingSection.plans.find((p: any) => p.name === plan);
+            if (foundPlan && foundPlan.price) {
+              setPlanWithPrice(`${plan} - ${foundPlan.price}`);
+            }
+          }
+        } catch (e) {
+          // fallback: just use plan name
+          setPlanWithPrice(plan);
+        }
+      }
+    };
+    fetchPlanPrice();
+  }, [planWithPrice, brand, plan]);
 
   useEffect(() => {
     const processPayment = async () => {
@@ -46,7 +70,7 @@ function PaymentSuccessContent() {
           sessionId,
           brand,
           email,
-          plan,
+          plan: planWithPrice,
           quantity: quantity || '1 QR Code',
         });
 
@@ -64,7 +88,7 @@ function PaymentSuccessContent() {
               sessionId,
               brand,
               email,
-              plan: plan || '', // Pass the exact plan string with price from URL
+              plan: planWithPrice || '', // Plan string with price from URL or fetched
               quantity: quantity || '1 QR Code',
             }),
             signal: controller.signal
@@ -119,7 +143,7 @@ function PaymentSuccessContent() {
     if (sessionId) {
       processPayment();
     }
-  }, [sessionId, brand, email, plan, quantity]);
+  }, [sessionId, brand, email, planWithPrice, quantity]);
 
   if (isProcessing) {
     return (
