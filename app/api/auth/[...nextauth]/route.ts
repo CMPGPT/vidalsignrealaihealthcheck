@@ -8,6 +8,9 @@ import PartnerUser from '@/models/PartnerUser';
 import { v4 as uuidv4 } from 'uuid';
 
 const handler = NextAuth({
+  // Use environment variables for configuration
+  debug: false, // Set to true if you want debug logs
+  
   providers: [
     CredentialsProvider({
       name: "Email and Password",
@@ -21,6 +24,8 @@ const handler = NextAuth({
           email: credentials?.email, 
           passwordProvided: !!credentials?.password 
         });
+        console.log('🔍 NEXTAUTH DEBUG: Environment - NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
+        console.log('🔍 NEXTAUTH DEBUG: Environment - NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL);
         
         try {
           const result = await authorizeUser(credentials);
@@ -54,12 +59,14 @@ const handler = NextAuth({
     signIn: "/login",
   },
   secret: process.env.NEXTAUTH_SECRET,
+  
   callbacks: {
     async signIn({ user, account, profile }) {
       console.log('🔍 NEXTAUTH DEBUG: ========== SignIn Callback ==========');
       console.log('🔍 NEXTAUTH DEBUG: User:', user);
       console.log('🔍 NEXTAUTH DEBUG: Account:', account);
       console.log('🔍 NEXTAUTH DEBUG: Profile:', profile);
+      console.log('🔍 NEXTAUTH DEBUG: Using URL:', process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL);
       
       await dbConnect();
       // For OAuth, ensure user exists in PartnerUser and has unique_id
@@ -92,6 +99,7 @@ const handler = NextAuth({
       console.log('🔍 NEXTAUTH DEBUG: ========== JWT Callback ==========');
       console.log('🔍 NEXTAUTH DEBUG: Token:', token);
       console.log('🔍 NEXTAUTH DEBUG: User:', user);
+      console.log('🔍 NEXTAUTH DEBUG: JWT using URL:', process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL);
       
       await dbConnect();
       
@@ -153,6 +161,7 @@ const handler = NextAuth({
       console.log('🔍 NEXTAUTH DEBUG: ========== Session Callback ==========');
       console.log('🔍 NEXTAUTH DEBUG: Session:', session);
       console.log('🔍 NEXTAUTH DEBUG: Token:', token);
+      console.log('🔍 NEXTAUTH DEBUG: Session using URL:', process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL);
       
       if (session.user) {
         (session.user as any).unique_id = token.unique_id;
@@ -165,15 +174,20 @@ const handler = NextAuth({
       console.log('🔍 NEXTAUTH DEBUG: ========== Redirect Callback ==========');
       console.log('🔍 NEXTAUTH DEBUG: URL:', url);
       console.log('🔍 NEXTAUTH DEBUG: Base URL:', baseUrl);
+      console.log('🔍 NEXTAUTH DEBUG: NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
+      console.log('🔍 NEXTAUTH DEBUG: NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL);
+      
+      // Use environment variable for base URL
+      const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || baseUrl;
       
       // Don't interfere with manual redirects, let the frontend handle it
-      if (url.startsWith(baseUrl)) {
+      if (url.startsWith(appUrl)) {
         console.log('✅ NEXTAUTH DEBUG: Using provided URL:', url);
         return url;
       }
       
-      console.log('✅ NEXTAUTH DEBUG: Using base URL');
-      return baseUrl;
+      console.log('✅ NEXTAUTH DEBUG: Using app URL:', appUrl);
+      return appUrl;
     },
   },
 });
