@@ -18,10 +18,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Determine correct cookie name for session
+  const prodCookie = '__Secure-next-auth.session-token';
+  const devCookie = 'next-auth.session-token';
+  const cookieName = req.cookies.has(prodCookie) ? prodCookie : devCookie;
+
   const token = await getToken({ 
     req, 
     secret: process.env.NEXTAUTH_SECRET,
-    cookieName: process.env.NODE_ENV === 'production' ? 'next-auth.session-token' : 'next-auth.session-token'
+    cookieName
   });
   console.log('🔍 MIDDLEWARE DEBUG: Token exists:', !!token);
   console.log('🔍 MIDDLEWARE DEBUG: Token details:', token ? { email: token.email, unique_id: token.unique_id } : 'No token');
