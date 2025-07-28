@@ -6,6 +6,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Bot, Send, User } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { notificationManager } from "@/lib/notificationUtils";
+import NotificationSettings from "./NotificationSettings";
 
 interface ReportData {
   id: string;
@@ -130,6 +132,7 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
   const [isTyping, setIsTyping] = useState(false);
   const [messageAnimation, setMessageAnimation] = useState(true);
   const [askedQuestions, setAskedQuestions] = useState<Set<string>>(new Set());
+  const [isNotificationSupported, setIsNotificationSupported] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messageContainerRef = useRef<HTMLDivElement>(null);
@@ -149,6 +152,11 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
       setSuggestedQuestions(initialSuggestedQuestions);
     }
   }, [initialSuggestedQuestions]);
+
+  // Initialize notification support
+  useEffect(() => {
+    setIsNotificationSupported(notificationManager.isSupported());
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -235,6 +243,11 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
       };
 
       setMessages((prev) => [...prev, newBotMessage]);
+
+      // Send notification for new bot message
+      if (isNotificationSupported && data.response) {
+        notificationManager.sendChatNotification('Medical Assistant', data.response);
+      }
     } catch (error) {
       console.error('Error getting AI response:', error);
 
@@ -310,18 +323,25 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
           <h3 className="font-medium">Medical Assistant</h3>
         </div>
         
-        {/* Mobile Report Button */}
-        {report && (
-          <Button 
-            variant="secondary"
-            size="sm"
-            className="lg:hidden rounded-full bg-primary text-primary-foreground h-10 w-10 p-0"
-            aria-label="View Report"
-            onClick={() => window.dispatchEvent(new CustomEvent('toggleSidebar'))}
-          >
-            <span className="text-[10px] font-medium">Report</span>
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Notification Settings - Always visible on mobile */}
+          {isNotificationSupported && (
+            <NotificationSettings className="h-8 w-8" />
+          )}
+          
+          {/* Mobile Report Button */}
+          {report && (
+            <Button 
+              variant="secondary"
+              size="sm"
+              className="lg:hidden rounded-full bg-primary text-primary-foreground h-10 w-10 p-0"
+              aria-label="View Report"
+              onClick={() => window.dispatchEvent(new CustomEvent('toggleSidebar'))}
+            >
+              <span className="text-[10px] font-medium">Report</span>
+            </Button>
+          )}
+        </div>
       </CardHeader>
       
       <Separator />
@@ -427,6 +447,13 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
           </Button>
         </form>
       </CardFooter>
+
+      {/* Floating Notification Settings Button for Mobile */}
+      {isNotificationSupported && (
+        <div className="fixed bottom-4 right-4 z-50 lg:hidden">
+          <NotificationSettings className="h-12 w-12 shadow-lg" />
+        </div>
+      )}
     </Card>
   );
 };

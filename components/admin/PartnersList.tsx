@@ -36,8 +36,23 @@ import {
 } from "@/components/ui/select";
 
 // Import types and mock data
-import { Partner, PARTNER_TYPES } from "@/data/schemas/partnerSchema";
+import { PARTNER_TYPES } from "@/data/schemas/partnerSchema";
 import mockPartners from "@/data/mock/partners";
+import useSWR from 'swr';
+import { doubleDecrypt } from '@/lib/encryption';
+
+// Update PartnerWithMongoId type to include totalQRCodes and redeemed
+type PartnerWithMongoId = {
+  mongo_id?: string;
+  id: string;
+  name: string;
+  email: string;
+  totalQRCodes: number;
+  redeemed: number;
+  status: 'active' | 'inactive' | 'pending';
+  joinDate: string;
+  tier: 'basic' | 'premium' | 'enterprise';
+};
 
 // Memoize the table header component
 const TableHeader = memo(({ children }: { children: React.ReactNode }) => (
@@ -50,11 +65,15 @@ const TableHeader = memo(({ children }: { children: React.ReactNode }) => (
 TableHeader.displayName = "TableHeader";
 
 // Memoize the table row component
-const TableRow = memo(({ partner, onEdit }: { partner: Partner; onEdit: (partner: Partner) => void }) => (
+const TableRow = memo(({ partner, onEdit }: { partner: PartnerWithMongoId; onEdit: (partner: PartnerWithMongoId) => void }) => (
   <ResponsiveTableRow>
+    <ResponsiveTableCell className="font-mono text-xs">
+      <span className="inline-block rounded-full bg-[hsl(var(--primary))]/10 text-[hsl(var(--primary))] px-3 py-1 text-xs font-mono font-semibold">
+        {partner.mongo_id}
+      </span>
+    </ResponsiveTableCell>
     <ResponsiveTableCell className="font-medium">{partner.id}</ResponsiveTableCell>
     <ResponsiveTableCell>{partner.name}</ResponsiveTableCell>
-    <ResponsiveTableCell>{partner.type}</ResponsiveTableCell>
     <ResponsiveTableCell className="max-w-[200px] truncate md:break-all">{partner.email}</ResponsiveTableCell>
     <ResponsiveTableCell>{partner.totalQRCodes}</ResponsiveTableCell>
     <ResponsiveTableCell>{partner.redeemed}</ResponsiveTableCell>
@@ -74,21 +93,27 @@ const TableRow = memo(({ partner, onEdit }: { partner: Partner; onEdit: (partner
 ));
 TableRow.displayName = "TableRow";
 
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
 const PartnersList: FC = () => {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addPartnerDialogOpen, setAddPartnerDialogOpen] = useState(false);
   const [partnerForm, setPartnerForm] = useState({
-    id: "",
-    name: "",
-    type: "",
-    email: "",
+    id: '',
+    name: '',
+    email: '',
   });
 
-  const handleEditPartner = useCallback((partner: Partner) => {
+  // Fetch real partner users
+  const { data, error } = useSWR('/api/admin/partner-users', fetcher);
+  const users = data?.users || [];
+
+  console.log(users);
+
+  const handleEditPartner = useCallback((partner: PartnerWithMongoId) => {
     setPartnerForm({
       id: partner.id,
       name: partner.name,
-      type: partner.type || "",
       email: partner.email,
     });
     setEditDialogOpen(true);
@@ -98,7 +123,6 @@ const PartnersList: FC = () => {
     setPartnerForm({
       id: `P-${String(mockPartners.length + 1).padStart(3, '0')}`,
       name: "",
-      type: "",
       email: "",
     });
     setAddPartnerDialogOpen(true);
@@ -115,7 +139,6 @@ const PartnersList: FC = () => {
   const handleTypeChange = (value: string) => {
     setPartnerForm({
       ...partnerForm,
-      type: value,
     });
   };
 
@@ -127,9 +150,9 @@ const PartnersList: FC = () => {
   // Memoize the table headers
   const tableHeaders = useMemo(() => (
     <TableHeader>
+      <ResponsiveTableHead>ID</ResponsiveTableHead>
       <ResponsiveTableHead>Partner ID</ResponsiveTableHead>
       <ResponsiveTableHead>Name</ResponsiveTableHead>
-      <ResponsiveTableHead>Type</ResponsiveTableHead>
       <ResponsiveTableHead>Email</ResponsiveTableHead>
       <ResponsiveTableHead>Total QR Codes</ResponsiveTableHead>
       <ResponsiveTableHead>Redeemed</ResponsiveTableHead>
@@ -139,14 +162,46 @@ const PartnersList: FC = () => {
 
   // Memoize the table rows
   const tableRows = useMemo(() => (
-    mockPartners.map((partner) => (
-      <TableRow 
-        key={partner.id} 
-        partner={partner} 
-        onEdit={handleEditPartner}
-      />
-    ))
-  ), [handleEditPartner]);
+    users.map((partner: any, idx: number) => {
+      let orgName = partner.organization_name;
+      let email = partner.email;
+      let firstName = partner.first_Name;
+      let lastName = partner.last_Name;
+      let state = partner.state;
+      let city = partner.city;
+      let website = partner.website_link;
+      let phone = partner.phone;
+      let address = partner.business_address;
+      let zip = partner.zip;
+      try { orgName = doubleDecrypt(orgName); } catch {}
+      try { email = doubleDecrypt(email); } catch {}
+      try { firstName = doubleDecrypt(firstName); } catch {}
+      try { lastName = doubleDecrypt(lastName); } catch {}
+      try { state = doubleDecrypt(state); } catch {}
+      try { city = doubleDecrypt(city); } catch {}
+      try { website = doubleDecrypt(website); } catch {}
+      try { phone = doubleDecrypt(phone); } catch {}
+      try { address = doubleDecrypt(address); } catch {}
+      try { zip = doubleDecrypt(zip); } catch {}
+      return (
+        <TableRow 
+          key={partner.mongo_id || partner._id || partner.unique_id} 
+          partner={{
+            mongo_id: partner.mongo_id,
+            id: `Partner - AP${String(idx + 1).padStart(2, '0')}`,
+            name: orgName || (firstName + ' ' + lastName),
+            email: email,
+            totalQRCodes: partner.totalQRCodes,
+            redeemed: partner.redeemed,
+            status: 'active',
+            joinDate: partner.createdAt ? new Date(partner.createdAt).toLocaleDateString() : '-',
+            tier: 'basic',
+          }} 
+          onEdit={handleEditPartner}
+        />
+      );
+    })
+  ), [users, handleEditPartner]);
 
   return (
     <Card className="overflow-hidden">
@@ -190,155 +245,27 @@ const PartnersList: FC = () => {
             <ResponsiveTable>
               {tableHeaders}
               <ResponsiveTableBody>
+                {error && (
+                  <ResponsiveTableRow>
+                    <ResponsiveTableCell colSpan={7} className="text-center text-red-500">Failed to load partner users.</ResponsiveTableCell>
+                  </ResponsiveTableRow>
+                )}
+                {!data && !error && (
+                  <ResponsiveTableRow>
+                    <ResponsiveTableCell colSpan={7} className="text-center">Loading...</ResponsiveTableCell>
+                  </ResponsiveTableRow>
+                )}
+                {users.length === 0 && data && (
+                  <ResponsiveTableRow>
+                    <ResponsiveTableCell colSpan={7} className="text-center">No partner users found.</ResponsiveTableCell>
+                  </ResponsiveTableRow>
+                )}
                 {tableRows}
               </ResponsiveTableBody>
             </ResponsiveTable>
           </div>
         </div>
-        
-        {/* Add Partner Dialog */}
-        <Dialog open={addPartnerDialogOpen} onOpenChange={setAddPartnerDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Add New Partner</DialogTitle>
-              <DialogDescription>
-                Enter the details for the new partner. Click save when you&apos;re done.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="id" className="text-right text-sm font-medium">ID</label>
-                <div className="col-span-3">
-                  <input
-                    id="id"
-                    name="id"
-                    value={partnerForm.id}
-                    className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm"
-                    disabled
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="name" className="text-right text-sm font-medium">Name</label>
-                <div className="col-span-3">
-                  <input
-                    id="name"
-                    name="name"
-                    value={partnerForm.name}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="type" className="text-right text-sm font-medium">Type</label>
-                <div className="col-span-3">
-                  <Select onValueChange={handleTypeChange} value={partnerForm.type}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select partner type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PARTNER_TYPES.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="email" className="text-right text-sm font-medium">Email</label>
-                <div className="col-span-3">
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={partnerForm.email}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit">Save Partner</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        
-        {/* Edit Partner Dialog */}
-        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Edit Partner</DialogTitle>
-              <DialogDescription>
-                Update the partner details. Click save when you&apos;re done.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="edit-id" className="text-right text-sm font-medium">ID</label>
-                <div className="col-span-3">
-                  <input
-                    id="edit-id"
-                    name="id"
-                    value={partnerForm.id}
-                    className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm"
-                    disabled
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="edit-name" className="text-right text-sm font-medium">Name</label>
-                <div className="col-span-3">
-                  <input
-                    id="edit-name"
-                    name="name"
-                    value={partnerForm.name}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="edit-type" className="text-right text-sm font-medium">Type</label>
-                <div className="col-span-3">
-                  <Select onValueChange={handleTypeChange} value={partnerForm.type}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select partner type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PARTNER_TYPES.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="edit-email" className="text-right text-sm font-medium">Email</label>
-                <div className="col-span-3">
-                  <input
-                    id="edit-email"
-                    name="email"
-                    type="email"
-                    value={partnerForm.email}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 bg-background border border-input rounded-md text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <DialogClose asChild>
-                <Button variant="outline">Cancel</Button>
-              </DialogClose>
-              <Button type="submit">Save Changes</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {/* Add/Edit dialogs remain as placeholders for now */}
       </CardContent>
     </Card>
   );

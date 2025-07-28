@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { memo } from "react";
 import { FC } from 'react';
+import { signOut } from "next-auth/react";
 
 // Main menu items definition
 const mainMenuItems = [
@@ -157,12 +158,13 @@ const AdminSidebar: FC = () => {
           </SidebarContent>
           
           <SidebarFooter className="p-3 mt-auto bg-[hsl(var(--sidebar-background))] border-t border-[hsl(var(--sidebar-border))]">
-            <Link href="/">
-              <button className="flex items-center w-full py-2.5 px-3 rounded-md gap-3 text-[hsl(var(--sidebar-foreground))] transition-colors hover:bg-[hsl(var(--sidebar-accent))]">
-                <LogOut className="h-5 w-5" />
-                Sign Out
-              </button>
-            </Link>
+            <button
+              className="flex items-center w-full py-2.5 px-3 rounded-md gap-3 text-[hsl(var(--sidebar-foreground))] transition-colors hover:bg-[hsl(var(--sidebar-accent))]"
+              onClick={() => signOut({ callbackUrl: "/admin/login" })}
+            >
+              <LogOut className="h-5 w-5" />
+              Sign Out
+            </button>
           </SidebarFooter>
         </Sidebar>
       </SidebarProvider>

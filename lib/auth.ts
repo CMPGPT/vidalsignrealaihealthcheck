@@ -1,5 +1,6 @@
 import dbConnect from "@/lib/dbConnect";
 import PartnerUser, { IPartnerUser } from "@/models/PartnerUser";
+import AdminUser from "@/models/AdminUser";
 import bcrypt from "bcryptjs";
 import { doubleDecrypt, doubleEncrypt } from "@/lib/encryption";
 import mongoose from "mongoose";
@@ -24,6 +25,26 @@ export async function authorizeUser(credentials: any) {
     throw new Error("Database connection failed");
   }
 
+  // ADMIN LOGIN FLOW
+  if (credentials.adminLogin) {
+    console.log('🔍 AUTH DEBUG: Admin login flow');
+    const admin = await AdminUser.findOne({ email: credentials.email });
+    if (!admin) {
+      throw new Error("Invalid email or password");
+    }
+    // For now, plain text password check; use bcrypt if you hash passwords
+    const isValid = credentials.password === admin.password;
+    if (!isValid) {
+      throw new Error("Invalid email or password");
+    }
+    return {
+      id: (admin as any)._id.toString(),
+      email: admin.email,
+      userType: 'admin',
+    };
+  }
+
+  // PARTNER USER LOGIN FLOW (existing)
   // First try direct email lookup (for non-encrypted emails)
   console.log('🔍 AUTH DEBUG: Step 1 - Direct email lookup');
   let user = await PartnerUser.findOne({ email: credentials.email });

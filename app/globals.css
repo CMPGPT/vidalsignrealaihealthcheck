@@ -235,6 +235,36 @@
   }
 }
 
+/* Notification settings button mobile styling */
+@media screen and (max-width: 1024px) {
+  .notification-settings-button {
+    position: fixed !important;
+    bottom: 1rem !important;
+    right: 1rem !important;
+    z-index: 1000 !important;
+    width: 3rem !important;
+    height: 3rem !important;
+    border-radius: 50% !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+  }
+
+  .notification-settings-button:hover {
+    transform: scale(1.1) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  .notification-settings-button:active {
+    transform: scale(0.95) !important;
+  }
+}
+
 /* Responsive table styles */
 .responsiveTable td .tdBefore {
   font-weight: 500;

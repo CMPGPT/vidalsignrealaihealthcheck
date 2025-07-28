@@ -153,6 +153,10 @@ const handler = NextAuth({
           console.log('❌ NEXTAUTH DEBUG: Could not find user in database');
         }
       }
+
+      if (user && (user as any).userType === 'admin') {
+        token.userType = 'admin';
+      }
       
       console.log('🔍 NEXTAUTH DEBUG: Final token:', { email: token.email, unique_id: token.unique_id });
       return token;
@@ -166,28 +170,23 @@ const handler = NextAuth({
       if (session.user) {
         (session.user as any).unique_id = token.unique_id;
         (session.user as any).partnerId = token.partnerId; // Add partnerId to session
-        console.log('✅ NEXTAUTH DEBUG: Added unique_id and partnerId to session');
+        (session.user as any).userType = token.userType;
       }
       return session;
     },
     async redirect({ url, baseUrl }) {
-      console.log('🔍 NEXTAUTH DEBUG: ========== Redirect Callback ==========');
-      console.log('🔍 NEXTAUTH DEBUG: URL:', url);
-      console.log('🔍 NEXTAUTH DEBUG: Base URL:', baseUrl);
-      console.log('🔍 NEXTAUTH DEBUG: NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
-      console.log('🔍 NEXTAUTH DEBUG: NEXT_PUBLIC_APP_URL:', process.env.NEXT_PUBLIC_APP_URL);
-      
-      // Use environment variable for base URL
-      const appUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || baseUrl;
-      
-      // Don't interfere with manual redirects, let the frontend handle it
-      if (url.startsWith(appUrl)) {
-        console.log('✅ NEXTAUTH DEBUG: Using provided URL:', url);
-        return url;
+      // Always respect the callbackUrl if provided
+      if (url && url.includes("callbackUrl=")) {
+        const cbUrl = decodeURIComponent(url.split("callbackUrl=").pop()?.split("&")[0] || "");
+        if (cbUrl.startsWith("/")) return cbUrl;
+        if (cbUrl.startsWith("http")) return cbUrl;
       }
-      
-      console.log('✅ NEXTAUTH DEBUG: Using app URL:', appUrl);
-      return appUrl;
+      // If logging out, go to /admin/login
+      if (url && url.endsWith("/admin/login")) return "/admin/login";
+      // If logging in, go to /admin
+      if (url && url.endsWith("/admin")) return "/admin";
+      // Fallback to baseUrl
+      return baseUrl || "/admin/login";
     },
   },
 });
