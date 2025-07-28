@@ -14,7 +14,6 @@ import { Poppins } from "next/font/google";
 import { UploadButton } from "@/components/upload/UploadButton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { notificationManager } from "@/lib/notificationUtils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface ReportData {
@@ -79,14 +78,6 @@ export default function SecureChatPage() {
     return () => {
       window.removeEventListener('toggleSidebar', handleToggleSidebar);
     };
-  }, []);
-
-  // Initialize notification system
-  useEffect(() => {
-    if (notificationManager.isSupported()) {
-      // Request permission on first load
-      notificationManager.requestPermission().catch(console.error);
-    }
   }, []);
 
   // Validate the secure link on component mount
