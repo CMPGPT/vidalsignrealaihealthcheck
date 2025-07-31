@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Suppress React warnings
+  env: {
+    SUPPRESS_REACT_WARNINGS: 'true',
+  },
   eslint: {
     ignoreDuringBuilds: true, // Temporarily ignore ESLint errors during build
   },
@@ -15,6 +19,23 @@ const nextConfig = {
       process.env.NODE_ENV === 'production'
         ? { properties: ['^bis_skin_checked$'] }
         : false,
+  },
+  // Suppress useLayoutEffect warnings in development
+  onDemandEntries: {
+    // period (in ms) where the server will keep pages in the buffer
+    maxInactiveAge: 25 * 1000,
+    // number of pages that should be kept simultaneously without being disposed
+    pagesBufferLength: 2,
+  },
+  // Suppress React warnings in development
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+      };
+    }
+    return config;
   },
   // Stripe webhook configuration
   async headers() {

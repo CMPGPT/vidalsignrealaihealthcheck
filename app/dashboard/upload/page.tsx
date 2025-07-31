@@ -18,6 +18,7 @@ type UploadFormData = {
 export default function UploadPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   const form = useForm<UploadFormData>({
     defaultValues: {
@@ -57,10 +58,24 @@ export default function UploadPage() {
     setFiles(prev => prev.filter((_, i) => i !== index));
   };
   
-  const onSubmit: SubmitHandler<UploadFormData> = (data) => {
-    console.log("Form data:", data);
-    console.log("Files:", files);
-    // Here you would process the files and send the email
+  const onSubmit: SubmitHandler<UploadFormData> = async (data) => {
+    setIsLoading(true);
+    try {
+      console.log("Form data:", data);
+      console.log("Files:", files);
+      // Here you would process the files and send the email
+      
+      // Simulate processing time
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Show success message
+      alert('Files processed successfully!');
+    } catch (error) {
+      console.error('Error processing files:', error);
+      alert('Error processing files. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -172,9 +187,18 @@ export default function UploadPage() {
                 />
                 
                 <div className="pt-4">
-                  <Button type="submit" className="w-full" disabled={files.length === 0}>
-                    <Check className="mr-2 h-4 w-4" />
-                    Process and Send
+                  <Button type="submit" className="w-full" disabled={files.length === 0 || isLoading}>
+                    {isLoading ? (
+                      <>
+                        <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="mr-2 h-4 w-4" />
+                        Process and Send
+                      </>
+                    )}
                   </Button>
                 </div>
               </form>

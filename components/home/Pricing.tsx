@@ -1,37 +1,44 @@
+'use client'
+
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import GlassCard from "@/components/ui/GlassCard";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { X, Mail, CheckCircle } from "lucide-react";
 
 const partnerPlans = [
   {
     name: "Starter",
-    price: "$25",
-    period: "per month",
-    description: "Perfect for small wellness centers and independent practitioners.",
+    price: "$1",
+    period: "for one QR code",
+    description: "Perfect for trying out our service or single patient use.",
     features: [
-      "50 QR codes per month",
-      "Custom branded patient portal",
-      "Basic analytics dashboard",
+      "1 QR code",
+      "Basic patient portal",
+      "Simple analytics",
       "Email support",
-      "Marketing materials",
-      "HIPAA compliant"
+      "HIPAA compliant",
+      "24 hour access"
     ],
     popular: false,
     buttonText: "Get Started",
-    buttonVariant: "outline"
+    buttonVariant: "outline",
+    isStarter: true
   },
   {
-    name: "Professional",
-    price: "$99",
+    name: "Standard Partner",
+    price: "$199",
     period: "per month",
     description: "Ideal for growing clinics and wellness facilities.",
     features: [
-      "200 QR codes per month",
-      "Fully branded patient experience",
+      "500 QR codes per month",
+      "Custom branded patient portal",
+      "Seller website included",
       "Detailed usage analytics",
       "Priority support",
-      "Customizable marketing kit",
+      "Marketing materials",
       "API access for integration",
       "Volume discount eligible"
     ],
@@ -54,12 +61,57 @@ const partnerPlans = [
       "Up to 25% volume discount"
     ],
     popular: false,
-    buttonText: "Contact Sales",
+    buttonText: "Go as a Partner",
     buttonVariant: "outline"
   }
 ];
 
 const Pricing = () => {
+  const router = useRouter();
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  const handleStarterClick = () => {
+    setShowEmailModal(true);
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      // Create checkout session for $1 Starter plan
+      const response = await fetch('/api/create-starter-checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email,
+          plan: 'starter',
+          amount: 100 // $1.00 in cents
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.url) {
+        // Redirect to Stripe checkout
+        window.location.href = data.url;
+      } else {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      setIsSubmitting(false);
+      alert('Failed to process payment. Please try again.');
+    }
+  };
+
   return (
     <section id="pricing" className="py-20 md:py-32">
       <div className="container mx-auto px-4 md:px-6">
@@ -104,7 +156,7 @@ const Pricing = () => {
               </ul>
               
               <div className="mt-auto">
-                <Link href="/partners">
+                {plan.isStarter ? (
                   <Button 
                     variant={plan.buttonVariant as "default" | "outline" | "secondary" | "ghost" | "link" | "destructive"}
                     className={`w-full rounded-full py-6 ${
@@ -112,10 +164,24 @@ const Pricing = () => {
                         ? "hover:bg-primary/10 hover:text-primary" 
                         : "bg-primary hover:bg-primary/90"
                     }`}
+                    onClick={handleStarterClick}
                   >
                     {plan.buttonText}
                   </Button>
-                </Link>
+                ) : (
+                  <Link href="/partners">
+                    <Button 
+                      variant={plan.buttonVariant as "default" | "outline" | "secondary" | "ghost" | "link" | "destructive"}
+                      className={`w-full rounded-full py-6 ${
+                        plan.buttonVariant === "outline" 
+                          ? "hover:bg-primary/10 hover:text-primary" 
+                          : "bg-primary hover:bg-primary/90"
+                      }`}
+                    >
+                      {plan.buttonText}
+                    </Button>
+                  </Link>
+                )}
               </div>
             </GlassCard>
           ))}
@@ -126,10 +192,78 @@ const Pricing = () => {
             All partner plans include a 14-day trial period and dedicated onboarding support.
           </p>
           <p className="text-sm text-muted-foreground">
-            Need additional QR codes? <a href="#contact" className="text-primary underline underline-offset-4">Purchase additional codes</a> at $0.50 each with volume discounts up to 25%.
+            Starter plan is perfect for testing. Upgrade to Standard Partner for full features and seller website.
           </p>
         </div>
       </div>
+
+      {/* Email Modal for Starter Plan */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative animate-in fade-in zoom-in-95 duration-300">
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setShowEmailModal(false);
+                setEmail('');
+              }}
+              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X className="h-5 w-5 text-gray-500" />
+            </button>
+
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                <Mail className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Get Your Starter Plan
+              </h2>
+              <p className="text-gray-600">
+                Enter your email to proceed with the $1 payment for your QR code.
+              </p>
+            </div>
+
+            {/* Email Form */}
+            <form onSubmit={handleEmailSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                  required
+                />
+              </div>
+
+              <Button
+                type="submit"
+                disabled={isSubmitting || !email}
+                className="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-medium transition-colors"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    Processing...
+                  </>
+                ) : (
+                  'Proceed to Payment ($1)'
+                )}
+              </Button>
+            </form>
+
+            <p className="text-xs text-gray-500 text-center mt-4">
+              You'll be redirected to our secure payment processor.
+            </p>
+          </div>
+        </div>
+      )}
     </section>
   );
 };

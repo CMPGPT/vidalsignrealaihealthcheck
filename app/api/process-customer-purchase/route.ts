@@ -100,8 +100,13 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < quantityNumber; i++) {
       const secureLink = unusedSecureLinks[i];
       
+      // Set expiry time to 24 hours from now
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+      
       // Update secure link to assign it to customer
       await SecureLink.findByIdAndUpdate(secureLink._id, {
+        expiresAt: expiresAt, // Set 24-hour expiry
         // Add metadata to track the purchase
         metadata: {
           ...secureLink.metadata,

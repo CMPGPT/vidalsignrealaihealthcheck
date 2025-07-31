@@ -10,20 +10,42 @@ interface CountdownTimerProps {
 }
 
 const CountdownTimer = ({ className, expiryTime, onExpire }: CountdownTimerProps) => {
-  const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number }>({
-    hours: 24,
-    minutes: 0,
-    seconds: 0,
-  });
+  const calculateTimeLeft = () => {
+    // Check if expiryTime is null or invalid
+    if (!expiryTime || !(expiryTime instanceof Date) || isNaN(expiryTime.getTime())) {
+      return { hours: 0, minutes: 0, seconds: 0 };
+    }
+    
+    const difference = expiryTime.getTime() - new Date().getTime();
+    
+    if (difference <= 0) {
+      return { hours: 0, minutes: 0, seconds: 0 };
+    }
+    
+    return {
+      hours: Math.floor(difference / (1000 * 60 * 60)),
+      minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+      seconds: Math.floor((difference % (1000 * 60)) / 1000),
+    };
+  };
+
+  const [timeLeft, setTimeLeft] = useState<{ hours: number; minutes: number; seconds: number }>(calculateTimeLeft());
   const [isExpiring, setIsExpiring] = useState(false);
 
   useEffect(() => {
-    const calculateTimeLeft = () => {
+    const updateTimer = () => {
+      // Check if expiryTime is null or invalid
+      if (!expiryTime || !(expiryTime instanceof Date) || isNaN(expiryTime.getTime())) {
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+        return;
+      }
+      
       const difference = expiryTime.getTime() - new Date().getTime();
       
       if (difference <= 0) {
         onExpire?.();
-        return { hours: 0, minutes: 0, seconds: 0 };
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0 });
+        return;
       }
       
       // Set warning state when less than 1 hour remains
@@ -31,18 +53,16 @@ const CountdownTimer = ({ className, expiryTime, onExpire }: CountdownTimerProps
         setIsExpiring(true);
       }
       
-      return {
+      setTimeLeft({
         hours: Math.floor(difference / (1000 * 60 * 60)),
         minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
         seconds: Math.floor((difference % (1000 * 60)) / 1000),
-      };
+      });
     };
 
-    setTimeLeft(calculateTimeLeft());
+    updateTimer();
     
-    const timer = setInterval(() => {
-      setTimeLeft(calculateTimeLeft());
-    }, 1000);
+    const timer = setInterval(updateTimer, 1000);
 
     return () => clearInterval(timer);
   }, [expiryTime, onExpire]);

@@ -4,6 +4,8 @@ export interface IAdminUser extends Document {
   email: string;
   password: string;
   userType: 'admin';
+  openaiApiKey?: string;
+  mistralApiKey?: string;
 }
 
 const AdminUserSchema: Schema = new Schema(
@@ -11,6 +13,8 @@ const AdminUserSchema: Schema = new Schema(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     userType: { type: String, required: true, default: 'admin', enum: ['admin'] },
+    openaiApiKey: { type: String, required: false },
+    mistralApiKey: { type: String, required: false },
   },
   { timestamps: true }
 );

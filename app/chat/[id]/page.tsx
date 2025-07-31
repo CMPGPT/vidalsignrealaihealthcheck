@@ -14,6 +14,8 @@ import { Poppins } from "next/font/google";
 import { UploadButton } from "@/components/upload/UploadButton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import CountdownTimer from "@/components/chat/CountdownTimer";
+import ExpirationOverlay from "@/components/chat/ExpirationOverlay";
 
 interface ReportData {
   id: string;
@@ -40,6 +42,9 @@ export default function Page() {
   const [error, setError] = useState<string | null>(null);
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [expiryTime, setExpiryTime] = useState<Date | null>(null);
+  const [databaseExpiryTime, setDatabaseExpiryTime] = useState<Date | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -62,6 +67,13 @@ export default function Page() {
     });
   };
 
+  const handleExpire = () => {
+    setIsExpired(true);
+    toast.error("Session expired", {
+      description: "Your session has expired. Please wait 14 days or purchase a QR code for immediate access.",
+    });
+  };
+
   // Listen for toggleSidebar events from the ChatInterface
   useEffect(() => {
     const handleToggleSidebar = () => {
@@ -75,13 +87,13 @@ export default function Page() {
     };
   }, []);
 
-  // Load report on first load
+  // Load public link on first load
   useEffect(() => {
-    const getExistingReport = async () => {
+    const getPublicLink = async () => {
       if (!chatId) return;
 
       try {
-        const res = await fetch('/api/findReport', {
+        const res = await fetch('/api/public-link', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -91,22 +103,26 @@ export default function Page() {
 
         const data = await res.json();
 
-        if (data.found) {
-          setReport({
-            ...data.report,
-            expiryTime: new Date(data.report.expiryTime),
-          });
-          
-          if (data.report.suggestedQuestions) {
-            setSuggestedQuestions(data.report.suggestedQuestions);
+        if (data.success) {
+          // Set the expiry time from database for the timer
+          const dbExpiryTime = new Date(data.data.validTo);
+          setDatabaseExpiryTime(dbExpiryTime);
+          setExpiryTime(dbExpiryTime);
+        } else {
+          // If link is expired, show the overlay
+          if (data.error === 'Link has expired or is closed') {
+            setIsExpired(true);
+          } else {
+            setError(data.error || 'Failed to load session');
           }
         }
-      } catch (err) {
-        console.error("Failed to load existing report:", err);
+      } catch (error) {
+        console.error('Error loading public link:', error);
+        setError('Failed to load session');
       }
     };
 
-    getExistingReport();
+    getPublicLink();
   }, [chatId]);
 
   const handleUploadComplete = async (data: { fileUrl: string; fileType: string; fileName: string }) => {
@@ -114,8 +130,21 @@ export default function Page() {
     setIsProcessing(true);
 
     try {
-      // Send the file data to our API for processing with OpenAI
-      const response = await fetch('/api/reportsummary', {
+      // Increment upload count
+      await fetch('/api/increment-upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ chatId }),
+      });
+
+      // Route to different APIs based on file type
+      const isPDF = data.fileType === 'application/pdf';
+      const apiEndpoint = isPDF ? '/api/ocr-v3' : '/api/reportsummary';
+
+      // Send the file data to the appropriate API
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -135,10 +164,16 @@ export default function Page() {
 
       const reportData = await response.json();
 
-      setReport({
-        ...reportData,
-        expiryTime: new Date(reportData.expiryTime),
-      });
+      // Only set report if we have database expiry time
+      if (databaseExpiryTime) {
+        setReport({
+          ...reportData,
+          // Always use database expiry time - no fallback to report time
+          expiryTime: databaseExpiryTime,
+        });
+      } else {
+        console.warn('Database expiry time not available, skipping report creation');
+      }
 
       if (reportData.suggestedQuestions) {
         setSuggestedQuestions(reportData.suggestedQuestions);
@@ -177,15 +212,22 @@ export default function Page() {
 
       {/* Main content area - 93% */}
       <main className="h-[93%] relative container max-w-7xl mx-auto px-0 lg:px-4 py-0 lg:py-6 flex flex-col">
-        {/* Mobile sidebar overlay */}
-        {sidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-            onClick={toggleSidebar}
-          />
+        {/* Show expiration overlay if session has expired */}
+        {isExpired && (
+          <ExpirationOverlay />
         )}
+        {/* Don't show main content if session is expired */}
+        {!isExpired && (
+          <>
+            {/* Mobile sidebar overlay */}
+            {sidebarOpen && (
+              <div 
+                className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                onClick={toggleSidebar}
+              />
+            )}
 
-        {/* Sidebar for upload/report on mobile */}
+            {/* Sidebar for upload/report on mobile */}
         <div 
           className={cn(
             "fixed inset-y-0 left-0 w-full md:w-80 z-50 transition-transform duration-300 lg:hidden",
@@ -213,6 +255,7 @@ export default function Page() {
               <ReportSummary
                 report={report}
                 onDelete={handleDeleteReport}
+                onExpire={handleExpire}
               />
             ) : (
               <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300">
@@ -270,6 +313,7 @@ export default function Page() {
               <ReportSummary
                 report={report}
                 onDelete={handleDeleteReport}
+                onExpire={handleExpire}
               />
             ) : (
               <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300">
@@ -329,6 +373,8 @@ export default function Page() {
             />
           </div>
         </div>
+          </>
+        )}
       </main>
 
       <Toaster />

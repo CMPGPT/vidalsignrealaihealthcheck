@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Bot, Send, User } from "lucide-react";
+import { Bot, Send, User, Image, Upload } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useUploadThing } from "@/lib/uploadthing-hooks";
 
 interface ReportData {
   id: string;
@@ -16,11 +17,22 @@ interface ReportData {
   suggestedQuestions?: string[];
 }
 
+interface BrandSettings {
+  brandName: string;
+  logoUrl?: string;
+  customColors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
+}
+
 interface ChatInterfaceProps {
   className?: string;
   suggestedQuestions?: string[];
   onAskQuestion: (question: string) => void;
   report?: ReportData | null;
+  brandSettings?: BrandSettings | null;
 }
 
 interface Message {
@@ -83,20 +95,18 @@ function shouldAutoFormat(text: string): boolean {
 
 // Function to safely render HTML content
 const MessageContent = ({ content, isFormatted }: { content: string; isFormatted?: boolean }) => {
-  const [formattedContent, setFormattedContent] = useState(content);
-  
-  useEffect(() => {
+  // Calculate formatted content without state to avoid render-time updates
+  const getFormattedContent = () => {
     if (isFormatted) {
-      // Content is already HTML formatted, use as is
-      setFormattedContent(content);
+      return content; // Content is already HTML formatted
     } else if (shouldAutoFormat(content)) {
-      // Content has markdown-style markers, auto-format it
-      setFormattedContent(formatTextWithMarkers(content));
+      return formatTextWithMarkers(content); // Auto-format with markers
     } else {
-      // Regular text content, no special formatting needed
-      setFormattedContent(content);
+      return content; // Regular text content
     }
-  }, [content, isFormatted]);
+  };
+  
+  const formattedContent = getFormattedContent();
   
   if (isFormatted || shouldAutoFormat(content)) {
     return (
@@ -111,7 +121,12 @@ const MessageContent = ({ content, isFormatted }: { content: string; isFormatted
   return <div className="text-sm whitespace-pre-wrap overflow-wrap-break-word">{content}</div>;
 };
 
-const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestions = [], onAskQuestion, report: initialReport }: ChatInterfaceProps) => {
+const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestions = [], onAskQuestion, report: initialReport, brandSettings }: ChatInterfaceProps) => {
+    // Use partner's primary color only if it's not a starter user
+    const shouldUsePartnerColor = brandSettings && brandSettings.brandName !== 'Vidal Chat';
+    const iconColor = shouldUsePartnerColor && brandSettings?.customColors?.primary 
+        ? brandSettings.customColors.primary 
+        : undefined;
   // State for local report data (to handle filtering questions)
   const [report, setReport] = useState<ReportData | null>(initialReport || null);
   // Separate state for suggested questions
@@ -196,9 +211,6 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
 
   const getOpenAIResponse = async (userInput: string) => {
     setIsTyping(true);
-    
-    // Clear input field immediately after sending the message
-    setInput("");
 
     try {
       // Create request payload with user question and report summary
@@ -241,7 +253,7 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
       // Add error message to chat
       const errorMessage: Message = {
         id: messages.length + 2,
-        content: "I'm sorry, I couldn't process your request. Please try again later.",
+        content: "I understand this might be concerning. I'm here to help you understand your health information. Please try asking your question again, and I'll do my best to provide clear, compassionate guidance.",
         sender: "bot",
         timestamp: new Date(),
       };
@@ -253,48 +265,152 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
   };
 
   const handleSuggestedQuestion = (question: string) => {
-    // Briefly show the question in the input field
-    setInput(question);
+    // Create user message immediately
+    const newUserMessage: Message = {
+      id: messages.length + 1,
+      content: question,
+      sender: "user",
+      timestamp: new Date(),
+    };
 
-    // Small delay to show the question in the input before sending
-    setTimeout(() => {
-      const newUserMessage: Message = {
-        id: messages.length + 1,
-        content: question,
-        sender: "user",
-        timestamp: new Date(),
-      };
-
-      // Add to asked questions set
-      setAskedQuestions(prev => new Set(prev).add(question));
-      
-      setMessages((prev) => [...prev, newUserMessage]);
-      
-      // Clear input field right after showing the question
-      setInput("");
-      
-      // Filter out the selected question from suggested questions in local report
-      if (report?.suggestedQuestions) {
-        setReport({
-          ...report,
-          suggestedQuestions: report.suggestedQuestions.filter(q => q !== question)
-        });
-      }
-      
-      // Also filter local suggestedQuestions
-      setSuggestedQuestions(prev => prev.filter(q => q !== question));
-      
-      onAskQuestion(question);
-      getOpenAIResponse(question);
-    }, 300);
+    // Update states immediately without setTimeout
+    setAskedQuestions(prev => new Set(prev).add(question));
+    setMessages((prev) => [...prev, newUserMessage]);
+    
+    // Filter out the selected question from suggested questions in local report
+    if (report?.suggestedQuestions) {
+      setReport({
+        ...report,
+        suggestedQuestions: report.suggestedQuestions.filter(q => q !== question)
+      });
+    }
+    
+    // Also filter local suggestedQuestions
+    setSuggestedQuestions(prev => prev.filter(q => q !== question));
+    
+    onAskQuestion(question);
+    getOpenAIResponse(question);
   };
 
-  // Get filtered suggested questions (remove already asked questions)
+  // Setup UploadThing hook for image uploads
+  const { startUpload: startImageUpload } = useUploadThing("medicalReportUploader", {
+    onClientUploadComplete: (res) => {
+      if (res && res.length > 0) {
+        const uploadData = {
+          fileUrl: res[0].ufsUrl || res[0].url,
+          fileType: res[0].type || "",
+          fileName: res[0].name,
+        };
+        handleImageAnalysis(uploadData);
+      }
+    },
+    onUploadError: (error) => {
+      console.error("Image upload error:", error);
+      const errorMessage: Message = {
+        id: Date.now(),
+        content: "Sorry, I couldn't upload that image. Please try again.",
+        sender: "bot",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    },
+  });
+
+  const handleImageAnalysis = async (data: { fileUrl: string; fileType: string; fileName: string }) => {
+    // Add single message that will be updated
+    const messageId = Date.now();
+    const uploadingMessage: Message = {
+      id: messageId,
+      content: `<div class="flex flex-col items-end space-y-2">
+        <div class="text-sm opacity-80">📤 Uploading: ${data.fileName}</div>
+        <div class="flex items-center space-x-2 bg-blue-100 text-blue-800 px-3 py-2 rounded-lg">
+          <div class="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+          <span class="text-sm">Uploading image...</span>
+        </div>
+      </div>`,
+      sender: "user",
+      timestamp: new Date(),
+      isFormatted: true,
+    };
+    
+    setMessages(prev => [...prev, uploadingMessage]);
+    
+    // Wait a moment to show upload progress
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Update the same message to show uploaded image
+    setMessages(prev => prev.map(msg => 
+      msg.id === messageId 
+        ? {
+            ...msg,
+            content: `<div class="flex flex-col items-end space-y-2">
+              <div class="text-sm opacity-80">📷 Uploaded: ${data.fileName}</div>
+              <img src="${data.fileUrl}" alt="${data.fileName}" class="max-w-[200px] rounded-lg shadow-md hover:scale-105 transition-transform duration-200" />
+            </div>`
+          }
+        : msg
+    ));
+    
+    // Show typing indicator
+    setIsTyping(true);
+    
+    // Get simple AI response for the uploaded image (not medical analysis)
+    try {
+      const response = await fetch('/api/chat-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileUrl: data.fileUrl,
+          fileType: data.fileType,
+          fileName: data.fileName,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze image');
+      }
+
+      const result = await response.json();
+      
+      if (result.success) {
+        const botMessage: Message = {
+          id: Date.now() + 1,
+          content: result.response,
+          sender: "bot",
+          timestamp: new Date(),
+          isFormatted: true,
+        };
+        
+        setMessages(prev => [...prev, botMessage]);
+      } else {
+        throw new Error(result.error || 'Failed to analyze image');
+      }
+    } catch (error) {
+      console.error('Image analysis error:', error);
+      const errorMessage: Message = {
+        id: Date.now() + 1,
+        content: "I can see you've uploaded an image. What would you like to know about it? Feel free to ask me any questions!",
+        sender: "bot",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      // Hide typing indicator
+      setIsTyping(false);
+    }
+  };
+
+  // Get filtered suggested questions (remove already asked questions) - limit to 3
   const getFilteredSuggestedQuestions = () => {
     const reportQuestions = report?.suggestedQuestions || [];
     const allQuestions = [...new Set([...reportQuestions, ...suggestedQuestions])];
     
-    return allQuestions.filter(question => !askedQuestions.has(question));
+    const filteredQuestions = allQuestions.filter(question => !askedQuestions.has(question));
+    
+    // Limit to maximum 3 questions
+    return filteredQuestions.slice(0, 3);
   };
 
   const filteredQuestions = getFilteredSuggestedQuestions();
@@ -305,9 +421,19 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
       <CardHeader className="flex flex-row items-center justify-between py-2 px-4 space-y-0 h-[7%] min-h-[50px]">
         <div className="flex items-center space-x-2">
           <Avatar className="h-8 w-8 bg-primary/10 flex justify-center items-center">
-            <Bot className="h-4 w-4 text-primary" />
+            {brandSettings?.logoUrl ? (
+              <img 
+                src={brandSettings.logoUrl} 
+                alt={brandSettings.brandName}
+                className="h-6 w-6 rounded object-cover"
+              />
+            ) : (
+              <Bot className="h-4 w-4 text-primary" />
+            )}
           </Avatar>
-          <h3 className="font-medium">Medical Assistant</h3>
+          <h3 className="font-medium">
+            {brandSettings?.brandName ? `${brandSettings.brandName} Assistant` : 'Medical Assistant'}
+          </h3>
         </div>
         
         {/* Mobile Report Button */}
@@ -414,6 +540,43 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
             onChange={(e) => setInput(e.target.value)}
             className="flex-1"
           />
+          
+          {/* Image Upload Button */}
+          <div className="relative">
+            <input
+              type="file"
+              id="image-upload"
+              className="hidden"
+              accept="image/jpeg,image/png,image/jpg"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  try {
+                    await startImageUpload([file]);
+                  } catch (error) {
+                    console.error("Upload error:", error);
+                  }
+                }
+              }}
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              onClick={() => document.getElementById('image-upload')?.click()}
+              className="bg-secondary hover:bg-secondary/80 text-secondary-foreground border border-input"
+              style={{
+                backgroundColor: iconColor,
+                borderColor: iconColor,
+              }}
+            >
+              <Image 
+                className="h-4 w-4" 
+                style={{ color: iconColor ? 'white' : undefined }}
+              />
+            </Button>
+          </div>
+          
           <Button
             type="submit"
             size="icon"
@@ -422,8 +585,15 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
               "transition-all duration-300",
               !input.trim() ? "opacity-50" : "opacity-100"
             )}
+            style={{
+              backgroundColor: iconColor,
+              borderColor: iconColor,
+            }}
           >
-            <Send className="h-4 w-4" />
+            <Send 
+              className="h-4 w-4" 
+              style={{ color: iconColor ? 'white' : undefined }}
+            />
           </Button>
         </form>
       </CardFooter>

@@ -130,11 +130,11 @@ export default function Signup() {
 
       Swal.fire({
         title: 'Signup Successful!',
-        text: 'Your account has been created. Please log in.',
+        text: 'Your account has been created. You can now upload your lab reports.',
         icon: 'success',
-        confirmButtonText: 'OK',
+        confirmButtonText: 'Start Uploading',
       }).then(() => {
-        router.push('/login');
+        router.push('/dashboard/upload');
       });
     } catch (err) {
       Swal.fire({
@@ -189,7 +189,7 @@ export default function Signup() {
         <div className="w-full max-w-md space-y-8">
           <div className="space-y-2 text-center">
             <h1 className="text-3xl font-bold">Create an account</h1>
-            <p className="text-muted-foreground">Sign up to start sharing health reports with patients</p>
+            <p className="text-muted-foreground">Sign up to start uploading and analyzing your lab reports</p>
           </div>
 
           <div className="space-y-6 mt-8">

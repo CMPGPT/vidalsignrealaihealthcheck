@@ -24,7 +24,11 @@ const SecureLinkSchema = new Schema({
   },
   expiresAt: { 
     type: Date, 
-    required: true 
+    required: false 
+  },
+  batchNo: {
+    type: String,
+    default: 'basicstarter'
   },
   createdAt: { 
     type: Date, 

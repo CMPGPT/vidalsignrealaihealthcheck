@@ -1,11 +1,21 @@
 // components/upload/UploadButton.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUploadThing } from "@/lib/uploadthing-hooks";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { UploadCloud } from "lucide-react";
+
+interface BrandSettings {
+  brandName: string;
+  logoUrl?: string;
+  customColors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
+}
 
 interface UploadButtonProps {
     chatId: string;
@@ -16,6 +26,8 @@ interface UploadButtonProps {
     }) => void;
     onUploadError: (error: Error) => void;
     onUploadStart: () => void;
+    brandSettings?: BrandSettings | null;
+    partnerId?: string | null;
 }
 
 export function UploadButton({
@@ -23,8 +35,13 @@ export function UploadButton({
     onUploadComplete,
     onUploadError,
     onUploadStart,
+    brandSettings,
+    partnerId,
 }: UploadButtonProps) {
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadCount, setUploadCount] = useState(0);
+    const [maxUploads, setMaxUploads] = useState(2);
+    const [canUpload, setCanUpload] = useState(true);
 
     // Log and prepare metadata before using it
     const uploadMetadata = { chatId };
@@ -36,10 +53,12 @@ export function UploadButton({
             setIsUploading(false);
             if (res && res.length > 0 && res[0]) {
                 onUploadComplete({
-                    fileUrl: res[0].url,
+                    fileUrl: res[0].ufsUrl || res[0].url, // Use ufsUrl if available, fallback to url
                     fileType: res[0].type || "",
                     fileName: res[0].name,
                 });
+                // Update upload count after successful upload
+                handleUploadSuccess();
             } else {
                 console.error("Upload response is empty or invalid", res);
                 toast.error("Upload failed", {
@@ -67,10 +86,44 @@ export function UploadButton({
     console.log("UploadButton rendered with chatId:", chatId);
     console.log("UploadThing permissions meta:", permissionsMeta);
 
+    // Check upload count on component mount
+    useEffect(() => {
+        const checkUploadCount = async () => {
+            try {
+                const response = await fetch('/api/check-upload-count', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ chatId }),
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    setUploadCount(data.fileUploadCount);
+                    setMaxUploads(data.maxUploads);
+                    setCanUpload(data.canUpload);
+                }
+            } catch (error) {
+                console.error('Error checking upload count:', error);
+            }
+        };
+
+        checkUploadCount();
+    }, [chatId]);
+
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) {
             console.log("No file selected");
+            return;
+        }
+
+        // Check upload limit
+        if (!canUpload) {
+            toast.error("Upload limit reached", {
+                description: `Maximum ${maxUploads} files allowed per session.`,
+            });
             return;
         }
 
@@ -111,17 +164,65 @@ export function UploadButton({
         }
     };
 
+    // Update upload count after successful upload
+    const handleUploadSuccess = async () => {
+        try {
+            const response = await fetch('/api/check-upload-count', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ chatId }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                setUploadCount(data.fileUploadCount);
+                setCanUpload(data.canUpload);
+            }
+        } catch (error) {
+            console.error('Error updating upload count:', error);
+        }
+    };
+
+    // Use partner's primary color only if it's not a starter user
+    const shouldUsePartnerColor = partnerId && partnerId !== 'starter-user';
+    const buttonColor = shouldUsePartnerColor && brandSettings?.customColors?.primary 
+        ? brandSettings.customColors.primary 
+        : undefined;
+
     return (
-        <Button className="relative overflow-hidden" size="lg" disabled={isUploading || isUploadingInternal}>
-            <input
-                type="file"
-                className="absolute inset-0 cursor-pointer opacity-0"
-                accept=".pdf,.jpg,.jpeg,.png"
-                onChange={handleFileSelect}
-                disabled={isUploading || isUploadingInternal}
-            />
-            <UploadCloud className="h-4 w-4 mr-2" />
-            {isUploading || isUploadingInternal ? "Uploading..." : "Upload Document"}
-        </Button>
+        <div className="space-y-2">
+            <Button 
+                className="relative overflow-hidden" 
+                size="lg" 
+                disabled={isUploading || isUploadingInternal || !canUpload}
+                style={{
+                    backgroundColor: buttonColor,
+                    borderColor: buttonColor,
+                }}
+            >
+                <input
+                    type="file"
+                    className="absolute inset-0 cursor-pointer opacity-0"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={handleFileSelect}
+                    disabled={isUploading || isUploadingInternal || !canUpload}
+                />
+                <UploadCloud 
+                    className="h-4 w-4 mr-2" 
+                    style={{ color: buttonColor ? 'white' : undefined }}
+                />
+                {isUploading || isUploadingInternal ? "Uploading..." : "Upload Document"}
+            </Button>
+            <div className="text-xs text-muted-foreground text-center">
+                {uploadCount}/{maxUploads} files uploaded
+                {!canUpload && (
+                    <div className="text-destructive mt-1">
+                        Upload limit reached
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }

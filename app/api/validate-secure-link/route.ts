@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import { SecureLink } from '@/models/SecureLink';
 import { QRCode } from '@/models/QRCode';
+import BrandSettings from '@/models/BrandSettings';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,70 +27,43 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if link has expired
-    if (new Date() > secureLink.expiresAt) {
+    // For starter users, don't block expired links - let the frontend handle it
+    // Only block expired links for partner users
+    if (secureLink.partnerId !== 'starter-user' && secureLink.expiresAt && new Date() > secureLink.expiresAt) {
       return NextResponse.json(
         { error: 'Link has expired' },
         { status: 410 }
       );
     }
 
-    // Check if link has already been used
-    if (secureLink.isUsed) {
-      return NextResponse.json(
-        { error: 'Link has already been used' },
-        { status: 410 }
-      );
-    }
+    // Allow all links to be accessed multiple times
+    // No longer marking links as used or blocking based on usage
 
-    // Mark the link as used
-    secureLink.isUsed = true;
-    secureLink.usedAt = new Date();
-    await secureLink.save();
+    // No longer marking QR codes as used to allow multiple access
 
-    // Also mark the associated QR code as used if it exists
-    if (secureLink.metadata?.qrCodeId) {
+    // No longer notifying partners on every access to allow multiple usage
+
+    // If it's a partner link (not starter-user), fetch brand settings
+    let brandSettings = null;
+    if (secureLink.partnerId !== 'starter-user') {
       try {
-        await QRCode.findOneAndUpdate(
-          { id: secureLink.metadata.qrCodeId },
-          { 
-            used: true,
-            usedDate: new Date(),
-            usedBy: 'secure_link_usage'
-          }
-        );
-        console.log('✅ LINK VALIDATION: QR code marked as used:', secureLink.metadata.qrCodeId);
-      } catch (qrError) {
-        console.error('❌ LINK VALIDATION: Failed to mark QR code as used:', qrError);
-        // Don't fail the validation if QR code update fails
+        brandSettings = await BrandSettings.findOne({ userId: secureLink.partnerId });
+      } catch (error) {
+        console.error('Error fetching brand settings:', error);
+        // Don't fail the validation if brand settings fetch fails
       }
-    }
-
-    // Notify the partner that their link was used
-    try {
-      const customerEmail = secureLink.metadata?.customerEmail || 'Unknown Customer';
-      
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notify-partner-link-used`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          linkId: secureLink.linkId,
-          partnerId: secureLink.partnerId,
-          customerEmail: customerEmail,
-          chatId: secureLink.chatId,
-        }),
-      });
-    } catch (notificationError) {
-      console.error('❌ LINK VALIDATION: Failed to notify partner:', notificationError);
-      // Don't fail the validation if notification fails
     }
 
     return NextResponse.json({
       success: true,
       chatId: secureLink.chatId,
       partnerId: secureLink.partnerId,
+      expiresAt: secureLink.expiresAt,
+      brandSettings: brandSettings ? {
+        brandName: brandSettings.brandName,
+        logoUrl: brandSettings.logoUrl,
+        customColors: brandSettings.customColors
+      } : null
     });
 
   } catch (error) {

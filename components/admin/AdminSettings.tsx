@@ -1,7 +1,7 @@
 'use client';
 
 // AdminSettings component for admin dashboard  
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminSettingsProps } from "@/types";
 import { 
   Card, 
@@ -13,14 +13,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  User,
   Mail,
   Lock,
   Globe,
   Key,
   Download,
   Eye,
-  EyeOff
+  EyeOff,
+  Loader2
 } from "lucide-react";
 import {
   ResponsiveTable,
@@ -30,37 +30,107 @@ import {
   ResponsiveTableRow,
   ResponsiveTableCell
 } from "@/components/ui/responsive-table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 // Import types and mock data
 import { BillingRecord } from '@/data/schemas/billingSchema';
 import billingData from '@/data/mock/billing';
 import { colorThemes } from '@/data/mock/settings';
 
+interface AdminSettingsData {
+  email: string;
+  password: string;
+  openaiApiKey: string;
+  mistralApiKey: string;
+}
+
 const AdminSettings: React.FC<AdminSettingsProps> = ({ defaultTab = "account" }) => {
   const [selectedTheme, setSelectedTheme] = useState("blue");
-  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showOpenAIKey, setShowOpenAIKey] = useState(false);
+  const [showMistralKey, setShowMistralKey] = useState(false);
+  
+  // Settings form state
+  const [settingsData, setSettingsData] = useState<AdminSettingsData>({
+    email: '',
+    password: '',
+    openaiApiKey: '',
+    mistralApiKey: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const handlePasswordChange = () => {
-    // Here you would implement password change logic
-    console.log("Password change:", { newPassword, confirmPassword });
-    setPasswordDialogOpen(false);
-    // Reset form
-    setNewPassword("");
-    setConfirmPassword("");
-    setShowNewPassword(false);
-    setShowConfirmPassword(false);
+  // Fetch current settings on component mount
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/admin/settings');
+      const result = await response.json();
+      
+      if (result.success) {
+        setSettingsData({
+          email: result.data.email,
+          password: result.data.password || '', // Show actual password from MongoDB
+          openaiApiKey: result.data.openaiApiKey,
+          mistralApiKey: result.data.mistralApiKey
+        });
+      } else {
+        toast.error('Failed to load settings');
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+      toast.error('Failed to load settings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSettingsUpdate = async () => {
+    try {
+      setSaving(true);
+      
+      // Prepare update data
+      const updateData: any = {
+        email: settingsData.email,
+        openaiApiKey: settingsData.openaiApiKey,
+        mistralApiKey: settingsData.mistralApiKey,
+      };
+
+      // Only include password if it's been changed (not empty)
+      if (settingsData.password && settingsData.password.trim() !== '') {
+        updateData.newPassword = settingsData.password;
+      }
+
+      const response = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updateData),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success('Settings updated successfully');
+        // Update with fresh data from API
+        setSettingsData(prev => ({
+          ...prev,
+          password: result.data.password || ''
+        }));
+      } else {
+        toast.error(result.error || 'Failed to update settings');
+      }
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      toast.error('Failed to update settings');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -81,22 +151,13 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ defaultTab = "account" })
           </TabsList>
           
           <TabsContent value="account" className="space-y-4">
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Full Name</label>
-                  <div className="flex">
-                    <div className="relative flex-1">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <input 
-                        type="text"
-                        value="Admin User"
-                        className="pl-9 py-2 pr-4 bg-background border border-input rounded-md text-sm w-full"
-                      />
-                    </div>
-                  </div>
-                </div>
-                
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin" />
+                <span className="ml-2">Loading settings...</span>
+              </div>
+            ) : (
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Email Address</label>
                   <div className="flex">
@@ -104,53 +165,111 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ defaultTab = "account" })
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <input 
                         type="email"
-                        value="admin@vidalsigns.com"
+                        value={settingsData.email}
+                        onChange={(e) => setSettingsData({...settingsData, email: e.target.value})}
                         className="pl-9 py-2 pr-4 bg-background border border-input rounded-md text-sm w-full"
                       />
                     </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Password</label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <input 
-                      type="password"
-                      value="••••••••••••"
-                      className="pl-9 py-2 pr-4 bg-background border border-input rounded-md text-sm w-full"
-                      readOnly
-                    />
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setPasswordDialogOpen(true)} 
-                    className="whitespace-nowrap"
-                  >
-                    Change Password
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">OpenAI API Key</label>
-                <div className="flex">
-                  <div className="relative flex-1">
-                    <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <input 
-                      type="password"
-                      placeholder="Enter your OpenAI API key"
-                      className="pl-9 py-2 pr-4 bg-background border border-input rounded-md text-sm w-full"
-                    />
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Password</label>
+                  <div className="flex">
+                    <div className="relative flex-1">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                             <input 
+                         type={showPassword ? "text" : "password"}
+                         value={settingsData.password}
+                         onChange={(e) => setSettingsData({...settingsData, password: e.target.value})}
+                         placeholder="Enter password (stored as plain text)"
+                         className="pl-9 py-2 pr-10 bg-background border border-input rounded-md text-sm w-full"
+                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">OpenAI API Key</label>
+                  <div className="flex">
+                    <div className="relative flex-1">
+                      <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <input 
+                        type={showOpenAIKey ? "text" : "password"}
+                        placeholder="Enter your OpenAI API key"
+                        value={settingsData.openaiApiKey}
+                        onChange={(e) => setSettingsData({...settingsData, openaiApiKey: e.target.value})}
+                        className="pl-9 py-2 pr-10 bg-background border border-input rounded-md text-sm w-full"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowOpenAIKey(!showOpenAIKey)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                      >
+                        {showOpenAIKey ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Mistral API Key</label>
+                  <div className="flex">
+                    <div className="relative flex-1">
+                      <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <input 
+                        type={showMistralKey ? "text" : "password"}
+                        placeholder="Enter your Mistral API key"
+                        value={settingsData.mistralApiKey}
+                        onChange={(e) => setSettingsData({...settingsData, mistralApiKey: e.target.value})}
+                        className="pl-9 py-2 pr-10 bg-background border border-input rounded-md text-sm w-full"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowMistralKey(!showMistralKey)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                      >
+                        {showMistralKey ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <Button 
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  onClick={handleSettingsUpdate}
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Account'
+                  )}
+                </Button>
               </div>
-              
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Update Account</Button>
-            </div>
+            )}
           </TabsContent>
           
           <TabsContent value="branding" className="space-y-4">
@@ -279,75 +398,6 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ defaultTab = "account" })
         </Tabs>
       </CardContent>
     </Card>
-    
-    {/* Password Change Dialog */}
-    <Dialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Change Password</DialogTitle>
-          <DialogDescription>
-            Enter your new password below. Password must be at least 8 characters.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">New Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input 
-                type={showNewPassword ? "text" : "password"}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="pl-9 py-2 pr-10 bg-background border border-input rounded-md text-sm w-full"
-              />
-              <button
-                type="button"
-                onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2"
-              >
-                {showNewPassword ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground" />
-                )}
-              </button>
-            </div>
-          </div>
-          
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Confirm Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input 
-                type={showConfirmPassword ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="pl-9 py-2 pr-10 bg-background border border-input rounded-md text-sm w-full"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2"
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground" />
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setPasswordDialogOpen(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handlePasswordChange}>
-            Change Password
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
     </>
   );
 };

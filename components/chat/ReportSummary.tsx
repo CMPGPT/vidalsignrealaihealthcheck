@@ -20,6 +20,8 @@ interface ReportSummaryProps {
     expiryTime: Date;
   };
   onDelete?: () => void;
+  onExpire?: () => void;
+  databaseExpiryTime?: Date; // Add this prop for the actual database expiry time
 }
 
 // Function to convert markdown to HTML
@@ -67,7 +69,7 @@ function convertMarkdownToHTML(markdown: string): string {
   return html;
 }
 
-const ReportSummary = ({ className, report, onDelete }: ReportSummaryProps) => {
+const ReportSummary = ({ className, report, onDelete, onExpire, databaseExpiryTime }: ReportSummaryProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [contentVisible, setContentVisible] = useState(false);
@@ -85,12 +87,9 @@ const ReportSummary = ({ className, report, onDelete }: ReportSummaryProps) => {
       
       return () => clearTimeout(timer);
     } else {
+      // Reset states immediately when no report
       setContentVisible(false);
-      const timer = setTimeout(() => {
-        setIsVisible(false);
-      }, 200);
-      
-      return () => clearTimeout(timer);
+      setIsVisible(false);
     }
   }, [report]);
 
@@ -112,36 +111,33 @@ const ReportSummary = ({ className, report, onDelete }: ReportSummaryProps) => {
 
   const handleDelete = () => {
     setIsLoading(true);
-    // Simulate deletion delay
+    
+    // Use a single timeout to avoid nested state updates
     setTimeout(() => {
       setIsLoading(false);
-      
-      // Animate out before deletion
       setContentVisible(false);
+      
+      // Use a single timeout for the final deletion
       setTimeout(() => {
         setIsVisible(false);
-        setTimeout(() => {
-          onDelete?.();
-          toast("Report deleted", {
-            description: "Your report has been permanently deleted.",
-          });
-        }, 300);
-      }, 200);
+        onDelete?.();
+        toast("Report deleted", {
+          description: "Your report has been permanently deleted.",
+        });
+      }, 500);
     }, 800);
   };
 
   const handleExpiry = () => {
-    // Animate out before deletion
     setContentVisible(false);
+    
+    // Use a single timeout for the final deletion
     setTimeout(() => {
       setIsVisible(false);
-      setTimeout(() => {
-        onDelete?.();
-        toast.error("Report expired", {
-          description: "Your report has been automatically deleted due to expiration.",
-        });
-      }, 300);
-    }, 200);
+      onDelete?.();
+      onExpire?.(); // Call the parent's onExpire callback
+      // Don't show toast here since the overlay will handle the messaging
+    }, 500);
   };
 
   // Convert markdown to HTML
@@ -185,7 +181,7 @@ const ReportSummary = ({ className, report, onDelete }: ReportSummaryProps) => {
         contentVisible ? "opacity-100 transform translate-y-0" : "opacity-0 transform translate-y-4"
       )}>
         <CountdownTimer 
-          expiryTime={report.expiryTime} 
+          expiryTime={databaseExpiryTime || report.expiryTime} 
           onExpire={handleExpiry}
         />
         <AlertDialog>

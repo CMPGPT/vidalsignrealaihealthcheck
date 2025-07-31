@@ -1,5 +1,30 @@
 import nodemailer from 'nodemailer';
 
+export default async function sendEmail(to: string, subject: string, html: string) {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+  });
+
+  const mailOptions = {
+    from: `"VidalSigns" <${process.env.GMAIL_USER}>`,
+    to,
+    subject,
+    html,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log('✅ Email sent successfully to:', to);
+  } catch (error) {
+    console.error('❌ Error sending email:', error);
+    throw error;
+  }
+}
+
 export async function sendOtpEmail(email: string, otp: string) {
   const transporter = nodemailer.createTransport({
     service: 'gmail',

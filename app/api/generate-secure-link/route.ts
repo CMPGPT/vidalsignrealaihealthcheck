@@ -18,9 +18,8 @@ export async function POST(request: NextRequest) {
 
     // Generate a unique link ID
     const linkId = uuidv4();
-    // Set expiry time (default 24 hours from now)
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + expiryHours);
+    // Set expiresAt to null (no expiration)
+    const expiresAt = null;
 
     // Create the secure link
     const secureLink = new SecureLink({

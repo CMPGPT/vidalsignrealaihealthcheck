@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import AppProviders from './providers';
 import { Raleway } from 'next/font/google';
+import './suppress-warnings';
 
 // Load Raleway font
 const raleway = Raleway({

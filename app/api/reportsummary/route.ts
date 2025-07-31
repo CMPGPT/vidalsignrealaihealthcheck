@@ -7,7 +7,7 @@ import axios from 'axios';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
 
 async function analyzeDocument(fileUrl: string, fileType: string): Promise<{
   summary: string;
@@ -83,13 +83,13 @@ Use double asterisks **bold** for important values.`,
           role: 'system',
           content: `You are a medical assistant helping patients understand their medical reports.
 
-Based on the summary of a medical report, generate 3–5 relevant and specific questions a patient might ask, including about abnormal values or next steps.
+Based on the summary of a medical report, generate exactly 3 relevant and specific questions a patient might ask, including about abnormal values or next steps.
 
 Return the result as **valid JSON** with no extra text or markdown.
 
 Example:
 {
-  "questions": ["What does my elevated creatinine level mean?", "Is the white blood cell count normal?"],
+  "questions": ["What does my elevated creatinine level mean?", "Is the white blood cell count normal?", "What lifestyle changes should I consider?"],
   "recommendationQuestions": ["Do I need to change my diet?", "Should I schedule another test soon?"]
 }`,
         },
@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
         summary,
         suggestedQuestions,
         recommendationQuestions,
-        expiryTime: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        // Remove expiryTime - will use database time instead
       };
 
       // Save to MongoDB
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
         summary: report.summary,
         suggestedQuestions: report.suggestedQuestions,
         recommendationQuestions: report.recommendationQuestions,
-        expiryTime: report.expiryTime,
+        // Remove expiryTime from database save - will use PublicLink time
       });
 
       return NextResponse.json(report);

@@ -15,6 +15,8 @@ import { UploadButton } from "@/components/upload/UploadButton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import CountdownTimer from "@/components/chat/CountdownTimer";
+import SecureExpirationOverlay from "@/components/chat/SecureExpirationOverlay";
 
 interface ReportData {
   id: string;
@@ -24,6 +26,16 @@ interface ReportData {
   expiryTime: Date;
   suggestedQuestions?: string[];
   recommendationQuestions?: string[];
+}
+
+interface BrandSettings {
+  brandName: string;
+  logoUrl?: string;
+  customColors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
 }
 
 const poppins = Poppins({
@@ -45,6 +57,11 @@ export default function SecureChatPage() {
   const [isValidating, setIsValidating] = useState(true);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [chatId, setChatId] = useState<string | null>(null);
+  const [expiryTime, setExpiryTime] = useState<Date | null>(null);
+  const [databaseExpiryTime, setDatabaseExpiryTime] = useState<Date | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
+  const [brandSettings, setBrandSettings] = useState<BrandSettings | null>(null);
+  const [partnerId, setPartnerId] = useState<string | null>(null);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -65,6 +82,11 @@ export default function SecureChatPage() {
     toast("Report deleted", {
       description: "Your report has been permanently deleted.",
     });
+  };
+
+  const handleExpire = () => {
+    setIsExpired(true);
+    // Don't show toast here since the overlay will handle the messaging
   };
 
   // Listen for toggleSidebar events from the ChatInterface
@@ -101,13 +123,51 @@ export default function SecureChatPage() {
         const data = await response.json();
 
         if (!response.ok) {
+          // For starter users, if link is expired, show the overlay instead of error
+          if (data.error === 'Link has expired') {
+            setIsExpired(true);
+            setIsValidating(false);
+            return;
+          }
           setValidationError(data.error || 'Link validation failed');
           setIsValidating(false);
           return;
         }
 
-        // Link is valid, set the chat ID
+        // Link is valid, set the chat ID and expiry time
         setChatId(data.chatId);
+        console.log('🔍 SECURE CHAT: Validation response:', data);
+        
+        // Set partner ID
+        setPartnerId(data.partnerId);
+        console.log('🔍 SECURE CHAT: Partner ID:', data.partnerId);
+        
+        // Set brand settings if available
+        if (data.brandSettings) {
+          setBrandSettings(data.brandSettings);
+          console.log('🔍 SECURE CHAT: Brand settings loaded:', data.brandSettings);
+        }
+        
+        // Set the expiry time from database for the timer
+        if (data.expiresAt) {
+          const dbExpiryTime = new Date(data.expiresAt);
+          setDatabaseExpiryTime(dbExpiryTime);
+          setExpiryTime(dbExpiryTime);
+          console.log('🔍 SECURE CHAT: Set database expiry time:', dbExpiryTime);
+          console.log('🔍 SECURE CHAT: Current time:', new Date());
+          console.log('🔍 SECURE CHAT: Time difference (ms):', dbExpiryTime.getTime() - new Date().getTime());
+          
+          // Check if the link has expired and show overlay for starter users
+          if (new Date() > dbExpiryTime) {
+            console.log('🔍 SECURE CHAT: Link has expired, showing overlay');
+            setIsExpired(true);
+            setIsValidating(false);
+            return;
+          }
+        } else {
+          console.warn('🔍 SECURE CHAT: No expiry time in validation response');
+        }
+        
         setIsValidating(false);
 
         // Load existing report if any
@@ -157,8 +217,21 @@ export default function SecureChatPage() {
     setIsProcessing(true);
 
     try {
-      // Send the file data to our API for processing with OpenAI
-      const response = await fetch('/api/reportsummary', {
+      // Increment upload count
+      await fetch('/api/increment-upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ chatId }),
+      });
+
+      // Route to different APIs based on file type
+      const isPDF = data.fileType === 'application/pdf';
+      const apiEndpoint = isPDF ? '/api/ocr-v3' : '/api/reportsummary';
+
+      // Send the file data to the appropriate API
+      const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -177,11 +250,17 @@ export default function SecureChatPage() {
       }
 
       const reportData = await response.json();
+      console.log('🔍 SECURE CHAT: Report data received:', reportData);
 
+      // Set report with database expiry time if available, otherwise use report time
+      const finalExpiryTime = databaseExpiryTime || new Date(reportData.expiryTime);
+      console.log('🔍 SECURE CHAT: Using expiry time:', finalExpiryTime);
+      
       setReport({
         ...reportData,
-        expiryTime: new Date(reportData.expiryTime),
+        expiryTime: finalExpiryTime,
       });
+      console.log('🔍 SECURE CHAT: Report state set successfully');
 
       if (reportData.suggestedQuestions) {
         setSuggestedQuestions(reportData.suggestedQuestions);
@@ -227,9 +306,8 @@ export default function SecureChatPage() {
               <Alert>
                 <AlertDescription>
                   {validationError === "Link has expired" && "This secure link has expired and is no longer valid."}
-                  {validationError === "Link has already been used" && "This secure link has already been used and cannot be accessed again."}
                   {validationError === "Link not found" && "The requested secure link was not found."}
-                  {validationError !== "Link has expired" && validationError !== "Link has already been used" && validationError !== "Link not found" && validationError}
+                  {validationError !== "Link has expired" && validationError !== "Link not found" && validationError}
                 </AlertDescription>
               </Alert>
               <p className="text-sm text-muted-foreground">
@@ -246,7 +324,17 @@ export default function SecureChatPage() {
     <div className={`h-screen w-screen flex flex-col bg-gradient-to-b from-background to-muted/30 backdrop-blur-xs ${poppins.className} overflow-hidden`}>
       {/* Top logo section - 7% */}
       <div className="h-[7%] min-h-[50px] w-full bg-background flex items-center justify-center border-b relative">
-        <div className="text-2xl font-bold text-primary">Vidal Secure Chat</div>
+        <Header brandSettings={brandSettings} partnerId={partnerId} />
+        
+        {/* Countdown Timer */}
+        {expiryTime && (
+          <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+            <CountdownTimer 
+              expiryTime={expiryTime} 
+              onExpire={handleExpire}
+            />
+          </div>
+        )}
         
         {/* Menu button for sidebar */}
         <Button 
@@ -259,15 +347,22 @@ export default function SecureChatPage() {
         </Button>
       </div>
 
-      {/* Main content area - 93% */}
-      <main className="h-[93%] relative container max-w-7xl mx-auto px-0 lg:px-4 py-0 lg:py-6 flex flex-col">
-        {/* Mobile sidebar overlay */}
-        {sidebarOpen && (
-          <div 
-            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-            onClick={toggleSidebar}
-          />
-        )}
+              {/* Main content area - 93% */}
+        <main className="h-[93%] relative container max-w-7xl mx-auto px-0 lg:px-4 py-0 lg:py-6 flex flex-col">
+          {/* Show expiration overlay if session has expired */}
+          {isExpired && (
+            <SecureExpirationOverlay />
+          )}
+        {/* Don't show main content if session is expired */}
+        {!isExpired && (
+          <>
+            {/* Mobile sidebar overlay */}
+            {sidebarOpen && (
+              <div 
+                className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                onClick={toggleSidebar}
+              />
+            )}
 
         {/* Sidebar for upload/report on mobile */}
         <div 
@@ -297,13 +392,29 @@ export default function SecureChatPage() {
               <ReportSummary
                 report={report}
                 onDelete={handleDeleteReport}
+                onExpire={handleExpire}
+                databaseExpiryTime={databaseExpiryTime || undefined}
               />
             ) : (
               <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center justify-center space-y-4">
-                    <div className="p-4 bg-primary/10 rounded-full">
-                      <UploadCloud className="h-10 w-10 text-primary" />
+                    <div 
+                      className="p-4 rounded-full"
+                      style={{
+                        backgroundColor: partnerId && partnerId !== 'starter-user' && brandSettings?.customColors?.primary 
+                          ? `${brandSettings.customColors.primary}20` 
+                          : 'var(--primary-10)'
+                      }}
+                    >
+                      <UploadCloud 
+                        className="h-10 w-10" 
+                        style={{
+                          color: partnerId && partnerId !== 'starter-user' && brandSettings?.customColors?.primary 
+                            ? brandSettings.customColors.primary 
+                            : 'var(--primary)'
+                        }}
+                      />
                     </div>
                     <h3 className="text-xl font-medium">Upload your medical report</h3>
                     <p className="text-center text-muted-foreground max-w-md">
@@ -324,6 +435,8 @@ export default function SecureChatPage() {
                           console.log("Upload starting with chatId:", chatId);
                           setError(null);
                         }}
+                        brandSettings={brandSettings}
+                        partnerId={partnerId}
                       />
                     </div>
                     {error && (
@@ -354,13 +467,29 @@ export default function SecureChatPage() {
               <ReportSummary
                 report={report}
                 onDelete={handleDeleteReport}
+                onExpire={handleExpire}
+                databaseExpiryTime={databaseExpiryTime || undefined}
               />
             ) : (
               <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300">
                 <CardContent className="p-8">
                   <div className="flex flex-col items-center justify-center space-y-4">
-                    <div className="p-4 bg-primary/10 rounded-full">
-                      <UploadCloud className="h-12 w-12 text-primary" />
+                    <div 
+                      className="p-4 rounded-full"
+                      style={{
+                        backgroundColor: partnerId && partnerId !== 'starter-user' && brandSettings?.customColors?.primary 
+                          ? `${brandSettings.customColors.primary}20` 
+                          : 'var(--primary-10)'
+                      }}
+                    >
+                      <UploadCloud 
+                        className="h-12 w-12" 
+                        style={{
+                          color: partnerId && partnerId !== 'starter-user' && brandSettings?.customColors?.primary 
+                            ? brandSettings.customColors.primary 
+                            : 'var(--primary)'
+                        }}
+                      />
                     </div>
                     <h3 className="text-xl font-medium">Upload your medical report</h3>
                     <p className="text-center text-muted-foreground max-w-md">
@@ -378,6 +507,8 @@ export default function SecureChatPage() {
                           console.log("Upload starting with chatId:", chatId);
                           setError(null);
                         }}
+                        brandSettings={brandSettings}
+                        partnerId={partnerId}
                       />
                     </div>
                     {error && (
@@ -410,9 +541,12 @@ export default function SecureChatPage() {
               suggestedQuestions={suggestedQuestions}
               onAskQuestion={handleAskQuestion}
               report={report}
+              brandSettings={brandSettings}
             />
           </div>
         </div>
+          </>
+        )}
       </main>
 
       <Toaster />

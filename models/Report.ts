@@ -16,17 +16,13 @@ const ReportSchema = new Schema({
   summary: String,
   suggestedQuestions: [String],
   recommendationQuestions: [String],
-  expiryTime: { 
-    type: Date, 
-    required: true 
-  },
+  // expiryTime removed - will use PublicLink validTo time instead
   createdAt: { 
     type: Date, 
     default: Date.now 
   },
 });
 
-// Add TTL index on expiryTime
-ReportSchema.index({ expiryTime: 1 }, { expireAfterSeconds: 0 });
+// TTL index removed since we use PublicLink time
 
 export const Report = models.Report || model('Report', ReportSchema);
