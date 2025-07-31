@@ -31,8 +31,7 @@ export interface IPartnerTransaction extends Document {
 const PartnerTransactionSchema = new Schema<IPartnerTransaction>({
   partnerId: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   transactionType: {
     type: String,

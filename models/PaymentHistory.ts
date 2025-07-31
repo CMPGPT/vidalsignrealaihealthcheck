@@ -3,8 +3,7 @@ import mongoose, { Schema, model, models } from 'mongoose';
 const PaymentHistorySchema = new Schema({
   partnerId: { 
     type: String, 
-    required: true,
-    index: true
+    required: true
   },
   transactionId: { 
     type: String, 

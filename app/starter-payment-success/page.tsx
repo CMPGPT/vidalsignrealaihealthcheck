@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Check, Mail, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-export default function StarterPaymentSuccessPage() {
+function StarterPaymentSuccessContent() {
   const searchParams = useSearchParams();
   const [isProcessing, setIsProcessing] = useState(true);
   const [paymentDetails, setPaymentDetails] = useState<any>(null);
@@ -198,5 +198,27 @@ export default function StarterPaymentSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function StarterPaymentSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center">Loading...</CardTitle>
+          </CardHeader>
+          <CardContent className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-green-600" />
+            <p className="text-gray-600">
+              Loading payment details...
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <StarterPaymentSuccessContent />
+    </Suspense>
   );
 } 

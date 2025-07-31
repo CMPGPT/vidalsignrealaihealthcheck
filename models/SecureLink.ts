@@ -4,8 +4,7 @@ const SecureLinkSchema = new Schema({
   linkId: { 
     type: String, 
     required: true, 
-    unique: true,
-    index: true 
+    unique: true
   },
   partnerId: { 
     type: String, 

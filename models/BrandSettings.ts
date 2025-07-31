@@ -159,8 +159,7 @@ const BrandSettingsSchema: Schema = new Schema(
     userId: { 
       type: String, 
       required: true, 
-      unique: true,
-      index: true
+      unique: true
     },
     brandName: { 
       type: String, 

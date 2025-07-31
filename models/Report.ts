@@ -4,8 +4,7 @@ import mongoose, { Schema, model, models } from 'mongoose';
 const ReportSchema = new Schema({
   chatId: { 
     type: String, 
-    required: true, 
-    index: true 
+    required: true
   },
   fileUrl: { 
     type: String, 

@@ -16,13 +16,11 @@ const PublicLinkSchema = new Schema<IPublicLink>({
   chatId: {
     type: String,
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   email: {
     type: String,
-    required: true,
-    index: true
+    required: true
   },
   isOpen: {
     type: Boolean,
