@@ -10,6 +10,16 @@ import { toast } from "sonner";
 import CountdownTimer from "@/components/chat/CountdownTimer";
 import { FileText, Trash2 } from "lucide-react";
 
+interface BrandSettings {
+  brandName: string;
+  logoUrl?: string;
+  customColors: {
+    primary: string;
+    secondary: string;
+    accent: string;
+  };
+}
+
 interface ReportSummaryProps {
   className?: string;
   report: {
@@ -22,6 +32,8 @@ interface ReportSummaryProps {
   onDelete?: () => void;
   onExpire?: () => void;
   databaseExpiryTime?: Date; // Add this prop for the actual database expiry time
+  brandSettings?: BrandSettings | null;
+  partnerId?: string | null;
 }
 
 // Function to convert markdown to HTML
@@ -35,7 +47,7 @@ function convertMarkdownToHTML(markdown: string): string {
     .replace(/^# (.*$)/gim, '<h1 class="font-bold text-xl mt-4 mb-3">$1</h1>');
   
   // Convert bold text
-  html = html.replace(/\*\*(.*?)\*\*/g, '<span class="font-bold text-primary">$1</span>');
+  html = html.replace(/\*\*(.*?)\*\*/g, '<span class="font-bold" style="color: var(--primary);">$1</span>');
   
   // Convert list items (lines starting with - or *)
   html = html.replace(/^[\s]*[-*] (.*$)/gim, '<li class="ml-4 mb-1">$1</li>');
@@ -69,7 +81,7 @@ function convertMarkdownToHTML(markdown: string): string {
   return html;
 }
 
-const ReportSummary = ({ className, report, onDelete, onExpire, databaseExpiryTime }: ReportSummaryProps) => {
+const ReportSummary = ({ className, report, onDelete, onExpire, databaseExpiryTime, brandSettings, partnerId }: ReportSummaryProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [contentVisible, setContentVisible] = useState(false);
@@ -156,7 +168,14 @@ const ReportSummary = ({ className, report, onDelete, onExpire, databaseExpiryTi
         contentVisible ? "opacity-100 transform translate-y-0" : "opacity-0 transform -translate-y-4"
       )}>
         <div className="flex items-center space-x-2">
-          <FileText className="h-5 w-5 text-primary" />
+                          <FileText 
+                  className="h-5 w-5" 
+                  style={{
+                    color: partnerId && partnerId !== 'starter-user' && brandSettings?.customColors?.primary 
+                      ? brandSettings.customColors.primary 
+                      : 'var(--primary)'
+                  }}
+                />
           <h3 className="font-medium text-lg">{report.title}</h3>
         </div>
         <div className="text-sm text-muted-foreground">{report.date}</div>

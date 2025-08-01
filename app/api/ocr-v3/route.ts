@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import axios from 'axios';
+import dbConnect from '@/lib/dbConnect';
+import { Report } from '@/models/Report';
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,6 +9,13 @@ export async function POST(request: NextRequest) {
     if (!fileUrl || !fileName) {
       return NextResponse.json(
         { success: false, error: 'File URL and name are required' },
+        { status: 400 }
+      );
+    }
+
+    if (!chatId) {
+      return NextResponse.json(
+        { success: false, error: 'Chat ID is required' },
         { status: 400 }
       );
     }
@@ -22,84 +30,115 @@ export async function POST(request: NextRequest) {
 
     console.log('Processing file with OCR v3:', fileUrl);
 
+    // Process PDF with Mistral's OCR API
+    console.log('Sending PDF to Mistral AI OCR API for text extraction');
+    let extractedText = '';
+    let pageCount = 0;
+
     try {
-      // Download the file
-      console.log('Downloading file from:', fileUrl);
-      const fileResponse = await axios.get(fileUrl, {
-        responseType: 'arraybuffer',
-        timeout: 30000
+      // Use Mistral OCR API to extract text
+      const ocrResponse = await fetch('https://api.mistral.ai/v1/ocr', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'mistral-ocr-latest',
+          document: {
+            type: 'document_url',
+            document_url: fileUrl
+          },
+          include_image_base64: false
+        })
       });
 
-      console.log('File downloaded, size:', fileResponse.data.length);
-
-      // For now, let's create a more specific analysis based on common lab report patterns
-      // Since we can't use pdf-parse due to file system issues, we'll use a smarter template
-      
-      let extractedText = '';
-      
-      if (fileName.toLowerCase().endsWith('.pdf')) {
-        // Create a more detailed medical analysis template
-        extractedText = `Medical Lab Report Analysis
-
-Based on the uploaded lab report, here are the key findings:
-
-Document Type: Medical Lab Report (flabs)
-Patient Information: Mr. Ayush, 23 Years/Male
-Test Date: 03/05/2024
-Report ID: RE378
-
-Test Results:
-- HbA1C: 5% (Reference Range: 4.0 - 6.0%)
-- Estimated Average Glucose: 96.80 mg/dL (Reference Range: 90 - 120 mg/dL)
-
-Analysis:
-The HbA1C result of 5% falls within the normal range (4.0-6.0%), indicating good blood sugar control over the past 2-3 months. The estimated average glucose of 96.80 mg/dL is also within normal limits (90-120 mg/dL).
-
-Clinical Interpretation:
-- HbA1C of 5% indicates normal glycemic control
-- This level suggests a low risk of diabetes
-- The estimated average glucose supports this interpretation
-
-Recommendations:
-1. Continue current lifestyle habits as they appear to be maintaining good blood sugar control
-2. Regular monitoring may be beneficial for ongoing health maintenance
-3. Consider annual HbA1C testing for preventive care
-
-Please consult with your healthcare provider for personalized medical advice.`;
-      } else {
-        // For images, provide similar detailed analysis
-        extractedText = `Medical Image Analysis
-
-Based on the uploaded medical image, here are the key findings:
-
-**Document Type:** Medical Lab Report Image
-**Analysis Status:** Image content analysis completed
-
-**Summary:**
-This appears to be a medical lab report image containing specific test results. The image has been successfully processed and analyzed.
-
-**Key Findings:**
-- Medical image successfully uploaded and processed
-- Lab report format detected with specific test values
-- Ready for detailed analysis
-
-**Recommendations:**
-1. Review the image for any highlighted or flagged results
-2. Check for abnormal values or ranges
-3. Consult with healthcare provider for detailed interpretation
-4. Consider scheduling follow-up appointments if needed
-
-**Questions to Ask Your Doctor:**
-- What do these results mean for my health?
-- Are there any values that need attention?
-- What lifestyle changes should I consider?
-- Do I need any additional tests?
-
-Please consult with your healthcare provider for accurate medical interpretation.`;
+      if (!ocrResponse.ok) {
+        const errorText = await ocrResponse.text();
+        console.error('Mistral OCR error response:', errorText);
+        throw new Error(`Mistral OCR error: ${errorText.substring(0, 100)}`);
       }
 
-      // Now send the extracted text to Mistral for analysis
-      console.log('Sending extracted text to Mistral for analysis...');
+      const ocrData = await ocrResponse.json();
+      
+      // Extract text from all pages and combine
+      extractedText = ocrData.pages.map((page: any) => page.markdown).join('\n\n');
+      pageCount = ocrData.pages.length;
+      
+      console.log(`OCR extraction complete: ${pageCount} pages processed`);
+      
+      if (!extractedText) {
+        console.error('No text extracted from PDF by Mistral OCR');
+        return NextResponse.json({ 
+          success: false, 
+          error: 'No text extracted from PDF by Mistral OCR',
+          status: 'failed'
+        }, { status: 400 });
+      }
+      
+      console.log('Text extraction successful with Mistral OCR, text length:', extractedText.length);
+      
+      // First, validate if this is a medical report
+      console.log('Validating if document is a medical report...');
+      const validationResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'mistral-large-latest',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a medical document validator. Your job is to determine if the given text is a medical report or medical document.
+
+Look for these indicators of a medical report:
+- Patient information (name, age, sex)
+- Medical test results (lab values, blood tests, etc.)
+- Medical terminology (diagnoses, procedures)
+- Healthcare provider information
+- Medical report structure
+
+Return ONLY "YES" if it's a medical report, or "NO" if it's not a medical report.`
+            },
+            {
+              role: 'user',
+              content: `Is this a medical report or medical document?
+
+${extractedText.substring(0, 1000)}
+
+Answer with only "YES" or "NO".`
+            }
+          ],
+          max_tokens: 10
+        })
+      });
+
+      if (!validationResponse.ok) {
+        const errorText = await validationResponse.text();
+        console.error('Validation error response:', errorText);
+        throw new Error(`Validation error: ${errorText.substring(0, 100)}`);
+      }
+
+      const validationData = await validationResponse.json();
+      const validationResult = validationData.choices[0].message.content?.trim().toUpperCase() || 'NO';
+      
+      console.log('Validation result:', validationResult);
+      
+      if (validationResult !== 'YES') {
+        console.log('Document is not a medical report');
+        return NextResponse.json({
+          success: false,
+          error: 'This document does not appear to be a medical report. Please upload a medical lab report, test results, or other medical document.',
+          status: 'not_medical'
+        }, { status: 400 });
+      }
+      
+      console.log('Document validated as medical report, proceeding with analysis...');
+      
+      // Now send the extracted text to Mistral for comprehensive medical analysis formatting
+      console.log('Sending extracted text to Mistral for comprehensive medical analysis...');
       const analysisResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -111,35 +150,54 @@ Please consult with your healthcare provider for accurate medical interpretation
           messages: [
             {
               role: 'system',
-              content: `You are a medical AI assistant specializing in analyzing lab reports and medical documents. Your role is to:
-1. Extract and interpret medical data from lab reports
-2. Identify abnormal values and their clinical significance
-3. Provide clear, patient-friendly explanations
-4. Suggest relevant questions for further discussion
-5. Offer general health recommendations based on the results
+              content: `You are a medical assistant specialized in analyzing and summarizing medical reports.
 
-Always maintain medical accuracy while being accessible to non-medical professionals. When analyzing lab results, focus on the specific values provided and their clinical significance.`
+Extract ALL information from the medical report and format it beautifully with markdown:
+
+## Medical Report Analysis
+
+### Patient Information
+- **Name:** [Patient Name]
+- **Age/Sex:** [Age and Gender]
+- **Date:** [Report Date]
+- **Lab No.:** [Laboratory Number]
+- **Reg. No.:** [Registration Number]
+- **Panel Name:** [Test Panel Name]
+- **Ref. Dr.:** [Referring Doctor]
+- **Sample Collection Date:** [Collection Date]
+- **Barcode No.:** [Barcode Number]
+- **Report Status:** [Status if available]
+
+### Laboratory Results
+- **Test Name:** Value (Normal range: X-Y)
+
+### Abnormal Findings
+- **Test Name:** Value (Status - Elevated/Below normal)
+
+### Summary
+- **Write a comprehensive summary of all findings**
+
+### Recommendations
+- Recommendation list
+
+Use double asterisks **bold** for important values and test names. 
+For normal values, use green color: <span style="color: green;">**Test Name:** Value</span>
+For abnormal values, use red color: <span style="color: red;">**Test Name:** Value (Elevated/Below normal)</span>
+
+Do NOT use #### or extra markdown symbols. Use clean ### for section headers.`
             },
-                         {
-               role: 'user',
-               content: `Please analyze this medical document and provide a comprehensive summary:
+            {
+              role: 'user',
+              content: `Please analyze this medical document text and extract ALL information including patient details, dates, lab numbers, and test results. Provide a comprehensive, beautifully formatted analysis:
 
 ${extractedText}
 
-Please provide a beautiful, well-formatted analysis with:
-1. A clear summary of the key findings with specific values
-2. Identification of any abnormal values (if any)
-3. Clinical significance of the results
-4. General health recommendations
-
-Format your response in a clean, professional manner without markdown symbols. Use clear headings and bullet points. Focus on the specific lab values provided. Do NOT include suggested questions in the summary - those will be handled separately.`
-             }
+Please extract and format ALL the information from the report, including patient details, dates, lab numbers, and all test results. Make sure to highlight abnormal values in red and normal values in green. Use clean markdown formatting without extra symbols.`
+            }
           ],
-          max_tokens: 2000
+          max_tokens: 3000
         })
       });
-
-      console.log('Analysis response status:', analysisResponse.status);
 
       if (!analysisResponse.ok) {
         const errorText = await analysisResponse.text();
@@ -147,76 +205,137 @@ Format your response in a clean, professional manner without markdown symbols. U
         throw new Error(`Mistral analysis error: ${errorText.substring(0, 100)}`);
       }
 
-      let analysis = '';
-      try {
-        const analysisData = await analysisResponse.json();
-        analysis = analysisData.choices[0].message.content;
-      } catch (jsonError) {
-        console.error('JSON parsing error:', jsonError);
-        analysis = extractedText; // Use the fallback text if Mistral fails
+      const analysisData = await analysisResponse.json();
+      const formattedSummary = analysisData.choices[0].message.content;
+      console.log('Comprehensive medical analysis completed');
+
+      // Generate suggested questions based on the analysis
+      const questionsResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'mistral-large-latest',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a medical assistant helping patients understand their medical reports.
+
+Based on the comprehensive summary of a medical report, generate exactly 3 relevant and specific questions a patient might ask, including about abnormal values or next steps.
+
+Return the result as **valid JSON** with no extra text or markdown.
+
+Example:
+{
+  "questions": ["What does my elevated creatinine level mean?", "Is the white blood cell count normal?", "What lifestyle changes should I consider?"],
+  "recommendationQuestions": ["Do I need to change my diet?", "Should I schedule another test soon?"]
+}`
+            },
+            {
+              role: 'user',
+              content: `Here is the comprehensive medical report summary: ${formattedSummary}`,
+            },
+          ],
+          max_tokens: 500
+        })
+      });
+
+      if (!questionsResponse.ok) {
+        const errorText = await questionsResponse.text();
+        console.error('Questions generation error response:', errorText);
+        // Use default questions if generation fails
+        return NextResponse.json({
+          success: true,
+          summary: formattedSummary,
+          suggestedQuestions: [
+            "What do these specific lab values mean for my health?",
+            "Are there any values outside the normal range?",
+            "What lifestyle changes should I consider based on these results?"
+          ],
+          recommendationQuestions: [
+            "What lifestyle changes should I consider?",
+            "Do I need to follow up with my doctor?",
+            "Are there any dietary recommendations based on these results?"
+          ],
+          pageCount: pageCount,
+          textLength: extractedText.length
+        });
       }
 
-      console.log('Analysis completed');
+      const questionsData = await questionsResponse.json();
+      let suggestedQuestions = [
+        "What do these specific lab values mean for my health?",
+        "Are there any values outside the normal range?",
+        "What lifestyle changes should I consider based on these results?"
+      ];
+      let recommendationQuestions = [
+        "What lifestyle changes should I consider?",
+        "Do I need to follow up with my doctor?",
+        "Are there any dietary recommendations based on these results?"
+      ];
 
-      return NextResponse.json({
-        success: true,
-        summary: analysis,
-                 suggestedQuestions: [
-           "What do these specific lab values mean for my health?",
-           "Are my HbA1C and glucose levels normal?",
-           "What lifestyle changes should I consider based on these results?"
-         ],
-        recommendationQuestions: [
-          "What lifestyle changes should I consider?",
-          "Do I need to follow up with my doctor?",
-          "Are there any dietary recommendations based on these results?"
-        ]
+      try {
+        const questionsContent = questionsData.choices[0].message.content;
+        const parsedQuestions = JSON.parse(questionsContent);
+        if (parsedQuestions.questions) {
+          suggestedQuestions = parsedQuestions.questions;
+        }
+        if (parsedQuestions.recommendationQuestions) {
+          recommendationQuestions = parsedQuestions.recommendationQuestions;
+        }
+      } catch (parseError) {
+        console.error('Failed to parse questions JSON:', parseError);
+        // Use default questions if parsing fails
+      }
+
+      // Create report object
+      const report = {
+        id: `REP-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000)}`,
+        title: fileName.split('.').slice(0, -1).join('.'), // Remove file extension
+        date: new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        }),
+        summary: formattedSummary,
+        suggestedQuestions: suggestedQuestions,
+        recommendationQuestions: recommendationQuestions,
+      };
+
+      // Save to MongoDB
+      console.log('Saving report to database...');
+      await dbConnect();
+      await Report.create({
+        chatId,
+        fileUrl, // Save the UploadThing URL
+        title: report.title,
+        date: report.date,
+        summary: report.summary,
+        suggestedQuestions: report.suggestedQuestions,
+        recommendationQuestions: report.recommendationQuestions,
       });
-
-    } catch (processingError) {
-      console.error('File processing error:', processingError);
+      console.log('Report saved to database successfully');
       
-      // Provide a comprehensive fallback analysis
-      const fallbackAnalysis = `Medical Document Analysis
-
-Based on the uploaded document, here are the key findings:
-
-**Summary:**
-The document has been successfully uploaded and processed. This appears to be a medical lab report with specific test results.
-
-**Analysis Status:**
-✅ Document successfully uploaded
-✅ File format verified
-✅ Processing completed
-
-**Recommendations:**
-1. Review the document visually for any abnormal values
-2. Check for any highlighted or flagged results
-3. Consult with your healthcare provider for detailed interpretation
-4. Consider scheduling a follow-up appointment to discuss results
-
-**Questions to Ask Your Doctor:**
-- What do these results mean for my health?
-- Are there any values that need attention?
-- What lifestyle changes should I consider?
-- Do I need any additional tests?
-
-Please consult with your healthcare provider for accurate medical interpretation.`;
-
+      // Return in the same format as reportsummary API
       return NextResponse.json({
         success: true,
-        summary: fallbackAnalysis,
-                 suggestedQuestions: [
-           "What are the key findings in my lab results?",
-           "Are there any values outside the normal range?",
-           "What do these results mean for my health?"
-         ],
-        recommendationQuestions: [
-          "What lifestyle changes should I consider?",
-          "Do I need to follow up with my doctor?",
-          "Are there any dietary recommendations based on these results?"
-        ]
+        ...report,
+        pageCount: pageCount,
+        textLength: extractedText.length
       });
+
+    } catch (error) {
+      console.error('OCR processing error:', error);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: error instanceof Error ? error.message : 'OCR processing failed',
+          status: 'failed'
+        },
+        { status: 500 }
+      );
     }
 
   } catch (error) {
@@ -232,4 +351,4 @@ Please consult with your healthcare provider for accurate medical interpretation
       { status: 500 }
     );
   }
-} 
+}

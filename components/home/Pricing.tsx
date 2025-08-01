@@ -169,7 +169,7 @@ const Pricing = () => {
                     {plan.buttonText}
                   </Button>
                 ) : (
-                  <Link href="/partners">
+                  <Link href="/partners/qrcodes">
                     <Button 
                       variant={plan.buttonVariant as "default" | "outline" | "secondary" | "ghost" | "link" | "destructive"}
                       className={`w-full rounded-full py-6 ${

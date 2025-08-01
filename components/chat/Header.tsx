@@ -40,7 +40,7 @@ const Header = ({ className, brandSettings, partnerId }: HeaderProps) => {
                             color: textColor
                         }}
                     >
-                        {brandSettings?.brandName || 'Vidal Chat'}
+                        {partnerId === 'starter-user' ? 'Vidal Sign Secure Chat' : (brandSettings?.brandName || 'Vidal Chat')}
                     </span>
                 </h1>
             </div>

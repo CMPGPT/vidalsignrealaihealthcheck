@@ -35,9 +35,9 @@ export async function GET(request: NextRequest) {
     const [totalCount, usedCount, unusedCount, soldCount, unsoldCount] = await Promise.all([
       SecureLink.countDocuments({ partnerId }),
       SecureLink.countDocuments({ partnerId, isUsed: true }),
-      SecureLink.countDocuments({ partnerId, isUsed: false, 'metadata.sold': { $ne: true } }),
+      SecureLink.countDocuments({ partnerId, isUsed: false }),
       SecureLink.countDocuments({ partnerId, 'metadata.sold': true }),
-      SecureLink.countDocuments({ partnerId, isUsed: false, 'metadata.sold': { $ne: true } })
+      SecureLink.countDocuments({ partnerId, $or: [{ 'metadata.sold': { $ne: true } }, { 'metadata.sold': { $exists: false } }] })
     ]);
 
     // Get paginated secure links

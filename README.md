@@ -75,9 +75,33 @@ This project is optimized for deployment on Vercel:
 
 ### Environment Variables
 
-No specific environment variables are required for basic functionality. When integrating with a backend, you may need to add:
+For basic functionality, you'll need to configure these environment variables:
 
-- `NEXT_PUBLIC_API_URL`: Base URL for your API
+#### Required for Contact Form:
+- `EMAIL_USER`: Your Gmail address (e.g., your-email@gmail.com)
+- `EMAIL_PASS`: Your Gmail app password (not your regular password)
+
+#### Other API Keys:
+- `MISTRAL_API_KEY`: Your Mistral AI API key
+- `OPENAI_API_KEY`: Your OpenAI API key
+- `MONGODB_URI`: Your MongoDB connection string
+- `NEXTAUTH_SECRET`: Your NextAuth secret
+- `NEXTAUTH_URL`: Your application URL (e.g., http://localhost:3000)
+- `UPLOADTHING_SECRET`: Your UploadThing secret
+- `UPLOADTHING_APP_ID`: Your UploadThing app ID
+
+#### Email Configuration Setup:
+
+1. **Enable 2-Factor Authentication** on your Gmail account
+2. **Generate an App Password**:
+   - Go to Google Account settings
+   - Security → 2-Step Verification → App passwords
+   - Generate a new app password for "Mail"
+3. **Add to your `.env.local` file**:
+   ```
+   EMAIL_USER=your-email@gmail.com
+   EMAIL_PASS=your-16-character-app-password
+   ```
 
 ### Deployment Configuration
 

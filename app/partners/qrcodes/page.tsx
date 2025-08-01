@@ -495,10 +495,6 @@ export default function QRCodesPage() {
                               <Download className="mr-2 h-4 w-4" />
                               Download QR
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => window.open(getSecureLinkUrl(row), '_blank')}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Chat
-                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

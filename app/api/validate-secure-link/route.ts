@@ -36,12 +36,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Allow all links to be accessed multiple times
-    // No longer marking links as used or blocking based on usage
-
-    // No longer marking QR codes as used to allow multiple access
-
-    // No longer notifying partners on every access to allow multiple usage
+    // Mark the link as used when someone accesses it
+    if (!secureLink.isUsed) {
+      secureLink.isUsed = true;
+      await secureLink.save();
+      console.log(`Link ${linkId} marked as used`);
+    }
 
     // If it's a partner link (not starter-user), fetch brand settings
     let brandSettings = null;

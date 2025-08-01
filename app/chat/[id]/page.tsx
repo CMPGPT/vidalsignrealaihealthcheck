@@ -45,6 +45,7 @@ export default function Page() {
   const [expiryTime, setExpiryTime] = useState<Date | null>(null);
   const [databaseExpiryTime, setDatabaseExpiryTime] = useState<Date | null>(null);
   const [isExpired, setIsExpired] = useState(false);
+  const [isSearchingReport, setIsSearchingReport] = useState(false);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -60,11 +61,43 @@ export default function Page() {
     }
   };
 
-  const handleDeleteReport = () => {
-    setReport(null);
-    toast("Report deleted", {
-      description: "Your report has been permanently deleted.",
-    });
+  const handleDeleteReport = async () => {
+    if (!chatId) {
+      toast.error("Error", {
+        description: "Unable to delete report - chat ID not found.",
+      });
+      return;
+    }
+
+    try {
+      // Delete from database
+      const response = await fetch('/api/delete-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ chatId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete report from database');
+      }
+
+      // Clear local states
+      setReport(null);
+      setSuggestedQuestions([]);
+      setError(null);
+      
+      toast.success("Report deleted", {
+        description: "Your report has been permanently deleted from the database.",
+      });
+    } catch (error) {
+      console.error('Delete report error:', error);
+      toast.error("Delete failed", {
+        description: error instanceof Error ? error.message : 'Failed to delete report',
+      });
+    }
   };
 
   const handleExpire = () => {
@@ -108,6 +141,9 @@ export default function Page() {
           const dbExpiryTime = new Date(data.data.validTo);
           setDatabaseExpiryTime(dbExpiryTime);
           setExpiryTime(dbExpiryTime);
+          
+          // Load existing report if any
+          await loadExistingReport(chatId);
         } else {
           // If link is expired, show the overlay
           if (data.error === 'Link has expired or is closed') {
@@ -125,20 +161,46 @@ export default function Page() {
     getPublicLink();
   }, [chatId]);
 
+  const loadExistingReport = async (currentChatId: string) => {
+    setIsSearchingReport(true);
+    try {
+      console.log('🔍 CHAT: Searching for existing report with chatId:', currentChatId);
+      const res = await fetch('/api/findReport', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ chatId: currentChatId }),
+      });
+
+      const data = await res.json();
+      console.log('🔍 CHAT: Find report response:', data);
+
+      if (data.found) {
+        console.log('🔍 CHAT: Found existing report:', data.report);
+        setReport({
+          ...data.report,
+          expiryTime: new Date(data.report.expiryTime),
+        });
+        
+        if (data.report.suggestedQuestions) {
+          setSuggestedQuestions(data.report.suggestedQuestions);
+        }
+      } else {
+        console.log('🔍 CHAT: No existing report found');
+      }
+    } catch (err) {
+      console.error("Failed to load existing report:", err);
+    } finally {
+      setIsSearchingReport(false);
+    }
+  };
+
   const handleUploadComplete = async (data: { fileUrl: string; fileType: string; fileName: string }) => {
     setError(null);
     setIsProcessing(true);
 
     try {
-      // Increment upload count
-      await fetch('/api/increment-upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ chatId }),
-      });
-
       // Route to different APIs based on file type
       const isPDF = data.fileType === 'application/pdf';
       const apiEndpoint = isPDF ? '/api/ocr-v3' : '/api/reportsummary';
@@ -163,6 +225,15 @@ export default function Page() {
       }
 
       const reportData = await response.json();
+
+      // Only increment upload count after successful validation and analysis
+      await fetch('/api/increment-upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ chatId }),
+      });
 
       // Only set report if we have database expiry time
       if (databaseExpiryTime) {
@@ -198,6 +269,16 @@ export default function Page() {
       {/* Top logo section - 7% */}
       <div className="h-[7%] min-h-[50px] w-full bg-background flex items-center justify-center border-b relative">
         <div className="text-2xl font-bold text-primary">Vidal Chat</div>
+        
+        {/* Countdown Timer */}
+        {expiryTime && (
+          <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+            <CountdownTimer 
+              expiryTime={expiryTime} 
+              onExpire={handleExpire}
+            />
+          </div>
+        )}
         
         {/* Menu button for sidebar */}
         <Button 
@@ -251,11 +332,20 @@ export default function Page() {
                   <p className="text-xs text-muted-foreground">This may take up to 40 seconds</p>
                 </div>
               </Card>
+            ) : isSearchingReport ? (
+              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
+                <div className="text-center space-y-4">
+                  <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+                  <p className="text-muted-foreground">Searching for existing reports...</p>
+                  <p className="text-xs text-muted-foreground">Checking database for previous uploads</p>
+                </div>
+              </Card>
             ) : report ? (
               <ReportSummary
                 report={report}
                 onDelete={handleDeleteReport}
                 onExpire={handleExpire}
+                databaseExpiryTime={databaseExpiryTime || undefined}
               />
             ) : (
               <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300">
@@ -309,11 +399,20 @@ export default function Page() {
                   <p className="text-xs text-muted-foreground">This may take up to 40 seconds</p>
                 </div>
               </Card>
+            ) : isSearchingReport ? (
+              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
+                <div className="text-center space-y-4">
+                  <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+                  <p className="text-muted-foreground">Searching for existing reports...</p>
+                  <p className="text-xs text-muted-foreground">Checking database for previous uploads</p>
+                </div>
+              </Card>
             ) : report ? (
               <ReportSummary
                 report={report}
                 onDelete={handleDeleteReport}
                 onExpire={handleExpire}
+                databaseExpiryTime={databaseExpiryTime || undefined}
               />
             ) : (
               <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300">
@@ -353,7 +452,7 @@ export default function Page() {
           </div>
 
           {/* Upload button when no report exists (for non-mobile only) */}
-          {!sidebarOpen && !report && !isProcessing && (
+          {!sidebarOpen && !report && !isProcessing && !isSearchingReport && (
             <Button 
               onClick={toggleSidebar}
               className="lg:hidden fixed right-4 top-20 z-50 rounded-full h-12 w-12 p-0 shadow-lg"

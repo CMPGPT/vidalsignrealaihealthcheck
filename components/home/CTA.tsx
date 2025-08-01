@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Mail, CheckCircle } from "lucide-react";
+import { X, Mail, CheckCircle, Send, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 
 const CTA = () => {
   const router = useRouter();
@@ -16,6 +18,16 @@ const CTA = () => {
   const [isSuccess, setIsSuccess] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
   const [remainingDays, setRemainingDays] = useState(0);
+  
+  // Contact form states
+  const [contactForm, setContactForm] = useState({
+    name: '',
+    email: '',
+    organization: '',
+    message: ''
+  });
+  const [isContactSubmitting, setIsContactSubmitting] = useState(false);
+  const [isContactSuccess, setIsContactSuccess] = useState(false);
 
   const handleUploadClick = () => {
     setIsUploadLoading(true);
@@ -86,6 +98,54 @@ const CTA = () => {
     }
   };
 
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate required fields
+    if (!contactForm.name || !contactForm.email || !contactForm.message) {
+      toast.error("Please fill in all required fields", {
+        description: "Name, email, and message are required."
+      });
+      return;
+    }
+
+    setIsContactSubmitting(true);
+    
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(contactForm),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setIsContactSuccess(true);
+        setContactForm({ name: '', email: '', organization: '', message: '' });
+        toast.success("Message sent successfully!", {
+          description: "We'll get back to you soon."
+        });
+        
+        // Reset success state after 3 seconds
+        setTimeout(() => {
+          setIsContactSuccess(false);
+        }, 3000);
+      } else {
+        throw new Error(data.error || 'Failed to send message');
+      }
+    } catch (error) {
+      console.error('Contact form error:', error);
+      toast.error("Failed to send message", {
+        description: error instanceof Error ? error.message : "Please try again later."
+      });
+    } finally {
+      setIsContactSubmitting(false);
+    }
+  };
+
   return (
     <section id="contact" className="py-20 md:py-32 relative overflow-hidden">
       {/* Background Elements */}
@@ -139,52 +199,87 @@ const CTA = () => {
           
           <div className="bg-secondary/50 border border-[hsl(var(--border))] rounded-2xl p-8 md:p-12">
             <h3 className="text-2xl font-medium mb-6">Contact Us</h3>
-            <form className="max-w-xl mx-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-foreground mb-2">Name</label>
+            {isContactSuccess ? (
+              <div className="max-w-xl mx-auto text-center">
+                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                </div>
+                <h4 className="text-xl font-semibold text-green-800 mb-2">Message Sent Successfully!</h4>
+                <p className="text-green-600">Thank you for contacting us. We'll get back to you soon.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleContactSubmit} className="max-w-xl mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-foreground mb-2">Name *</label>
+                    <input
+                      type="text"
+                      id="name"
+                      value={contactForm.name}
+                      onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })}
+                      className="w-full px-4 py-3 rounded-lg border border-[hsl(var(--border))] bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      placeholder="Your name"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">Email *</label>
+                    <input
+                      type="email"
+                      id="email"
+                      value={contactForm.email}
+                      onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                      className="w-full px-4 py-3 rounded-lg border border-[hsl(var(--border))] bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      placeholder="Your email"
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="mb-6">
+                  <label htmlFor="organization" className="block text-sm font-medium text-foreground mb-2">Organization</label>
                   <input
                     type="text"
-                    id="name"
+                    id="organization"
+                    value={contactForm.organization}
+                    onChange={(e) => setContactForm({ ...contactForm, organization: e.target.value })}
                     className="w-full px-4 py-3 rounded-lg border border-[hsl(var(--border))] bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    placeholder="Your name"
+                    placeholder="Your gym, wellness center, or business name"
                   />
                 </div>
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">Email</label>
-                  <input
-                    type="email"
-                    id="email"
+                
+                <div className="mb-6">
+                  <label htmlFor="message" className="block text-sm font-medium text-foreground mb-2">Message *</label>
+                  <textarea
+                    id="message"
+                    rows={4}
+                    value={contactForm.message}
+                    onChange={(e) => setContactForm({ ...contactForm, message: e.target.value })}
                     className="w-full px-4 py-3 rounded-lg border border-[hsl(var(--border))] bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    placeholder="Your email"
-                  />
+                    placeholder="How can we help you?"
+                    required
+                  ></textarea>
                 </div>
-              </div>
-              
-              <div className="mb-6">
-                <label htmlFor="organization" className="block text-sm font-medium text-foreground mb-2">Organization</label>
-                <input
-                  type="text"
-                  id="organization"
-                  className="w-full px-4 py-3 rounded-lg border border-[hsl(var(--border))] bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  placeholder="Your gym, wellness center, or business name"
-                />
-              </div>
-              
-              <div className="mb-6">
-                <label htmlFor="message" className="block text-sm font-medium text-foreground mb-2">Message</label>
-                <textarea
-                  id="message"
-                  rows={4}
-                  className="w-full px-4 py-3 rounded-lg border border-[hsl(var(--border))] bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  placeholder="How can we help you?"
-                ></textarea>
-              </div>
-              
-              <Button type="submit" className="w-full rounded-lg py-3 bg-primary hover:bg-primary/90">
-                Send Message
-              </Button>
-            </form>
+                
+                <Button 
+                  type="submit" 
+                  disabled={isContactSubmitting}
+                  className="w-full rounded-lg py-3 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isContactSubmitting ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="mr-2 h-4 w-4" />
+                      Send Message
+                    </>
+                  )}
+                </Button>
+              </form>
+            )}
           </div>
         </div>
       </div>
@@ -304,6 +399,8 @@ const CTA = () => {
           </div>
         </div>
       )}
+      
+      <Toaster />
     </section>
   );
 };

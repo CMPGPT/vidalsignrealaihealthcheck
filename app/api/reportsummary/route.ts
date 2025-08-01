@@ -9,6 +9,66 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png'];
 
+async function validateMedicalDocument(fileUrl: string, fileType: string): Promise<boolean> {
+  try {
+    // Download the file to a buffer
+    const { data } = await axios.get(fileUrl, {
+      responseType: 'arraybuffer'
+    });
+    
+    // Convert buffer to base64
+    const base64 = Buffer.from(data).toString('base64');
+    
+    // Determine MIME type for the base64 image URL
+    const mimeType = fileType === 'image/png' ? 'image/png' : 'image/jpeg';
+    
+    // Create the image message
+    const imageMessage = {
+      type: 'image_url',
+      image_url: {
+        url: `data:${mimeType};base64,${base64}`,
+      },
+    };
+
+    // Validate if this is a medical document
+    const validationResponse = await openai.chat.completions.create({
+      model: 'gpt-4o',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a medical document validator. Your job is to determine if the given image is a medical report or medical document.
+
+Look for these indicators of a medical report:
+- Patient information (name, age, sex)
+- Medical test results (lab values, blood tests, etc.)
+- Medical terminology (diagnoses, procedures)
+- Healthcare provider information
+- Medical report structure
+
+Return ONLY "YES" if it's a medical report, or "NO" if it's not a medical report.`
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Is this a medical report or medical document? Answer with only "YES" or "NO".' },
+            // @ts-ignore
+            imageMessage,
+          ],
+        },
+      ],
+      max_tokens: 10
+    });
+
+    const validationResult = validationResponse.choices[0].message.content?.trim().toUpperCase() || 'NO';
+    console.log('Medical document validation result:', validationResult);
+    
+    return validationResult === 'YES';
+  } catch (error) {
+    console.error('Medical document validation error:', error);
+    return false;
+  }
+}
+
 async function analyzeDocument(fileUrl: string, fileType: string): Promise<{
   summary: string;
   suggestedQuestions: string[];
@@ -35,7 +95,7 @@ async function analyzeDocument(fileUrl: string, fileType: string): Promise<{
       },
     };
 
-    // First request: Get the report summary
+    // First request: Get the comprehensive report analysis with all patient information
     const summaryResponse = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
@@ -43,34 +103,50 @@ async function analyzeDocument(fileUrl: string, fileType: string): Promise<{
           role: 'system',
           content: `You are a medical assistant specialized in analyzing and summarizing medical reports.
 
-Format your response with markdown:
+Extract ALL information from the medical report and format it beautifully with markdown:
 
 ## Medical Report Analysis
 
+### Patient Information
+- **Name:** [Patient Name]
+- **Age/Sex:** [Age and Gender]
+- **Date:** [Report Date]
+- **Lab No.:** [Laboratory Number]
+- **Reg. No.:** [Registration Number]
+- **Panel Name:** [Test Panel Name]
+- **Ref. Dr.:** [Referring Doctor]
+- **Sample Collection Date:** [Collection Date]
+- **Barcode No.:** [Barcode Number]
+- **Report Status:** [Status if available]
+
 ### Laboratory Results
-- **Test Name:** Value (Normal range)
+- **Test Name:** Value (Normal range: X-Y)
 
 ### Abnormal Findings
-- **Show abnormal things**
+- **Test Name:** Value (Status - Elevated/Below normal)
 
 ### Summary
-- **Write two or three line sammary**
+- **Write a comprehensive summary of all findings**
 
 ### Recommendations
 - Recommendation list
 
-Use double asterisks **bold** for important values.`,
+Use double asterisks **bold** for important values and test names. 
+For normal values, use green color: <span style="color: green;">**Test Name:** Value</span>
+For abnormal values, use red color: <span style="color: red;">**Test Name:** Value (Elevated/Below normal)</span>
+
+Do NOT use #### or extra markdown symbols. Use clean ### for section headers.`
         },
         {
           role: 'user',
           content: [
-            { type: 'text', text: 'Please analyze this medical document and extract the relevant medical information:' },
+            { type: 'text', text: 'Please analyze this medical document image and extract ALL information including patient details, dates, lab numbers, and test results. Provide a comprehensive, beautifully formatted analysis:' },
             // @ts-ignore
             imageMessage,
           ],
         },
       ],
-      max_tokens: 1500,
+      max_tokens: 2000,
     });
 
     const summary = summaryResponse.choices[0].message.content || 'No meaningful content extracted.';
@@ -83,7 +159,7 @@ Use double asterisks **bold** for important values.`,
           role: 'system',
           content: `You are a medical assistant helping patients understand their medical reports.
 
-Based on the summary of a medical report, generate exactly 3 relevant and specific questions a patient might ask, including about abnormal values or next steps.
+Based on the comprehensive summary of a medical report, generate exactly 3 relevant and specific questions a patient might ask, including about abnormal values or next steps.
 
 Return the result as **valid JSON** with no extra text or markdown.
 
@@ -91,25 +167,32 @@ Example:
 {
   "questions": ["What does my elevated creatinine level mean?", "Is the white blood cell count normal?", "What lifestyle changes should I consider?"],
   "recommendationQuestions": ["Do I need to change my diet?", "Should I schedule another test soon?"]
-}`,
+}`
         },
         {
           role: 'user',
-          content: `Here is the medical report summary: ${summary}`,
+          content: `Here is the comprehensive medical report summary: ${summary}`,
         },
       ],
-      response_format: { type: 'json_object' },
       max_tokens: 500,
     });
 
-    let suggestedQuestions: string[] = [];
-    let recommendationQuestions: string[] = [];
+    let suggestedQuestions = [
+      'What do these lab results mean for my health?',
+      'Are there any values outside the normal range?',
+      'What lifestyle changes should I consider based on these results?'
+    ];
+    let recommendationQuestions = [
+      'What lifestyle changes should I consider?',
+      'Do I need to follow up with my doctor?',
+      'Are there any dietary recommendations based on these results?'
+    ];
 
     try {
       const questionsContent = questionsResponse.choices[0].message.content || '{}';
       const parsedQuestions = JSON.parse(questionsContent);
-
-      if (!Array.isArray(parsedQuestions.questions) || !Array.isArray(parsedQuestions.recommendationQuestions)) {
+      
+      if (!parsedQuestions.questions || !parsedQuestions.recommendationQuestions) {
         throw new Error('Invalid format from OpenAI');
       }
 
@@ -156,6 +239,21 @@ export async function POST(request: NextRequest) {
 
     try {
       console.log(`Processing file: ${fileName}, Type: ${fileType}, URL: ${fileUrl}`);
+
+      // First, validate if this is a medical document
+      console.log('Validating if image is a medical document...');
+      const isMedicalDocument = await validateMedicalDocument(fileUrl, fileType);
+      
+      if (!isMedicalDocument) {
+        console.log('Image is not a medical document');
+        return NextResponse.json({
+          success: false,
+          error: 'This document does not appear to be a medical report. Please upload a medical lab report, test results, or other medical document.',
+          status: 'not_medical'
+        }, { status: 400 });
+      }
+      
+      console.log('Image validated as medical document, proceeding with analysis...');
 
       const { summary, suggestedQuestions, recommendationQuestions } = await analyzeDocument(fileUrl, fileType);
 

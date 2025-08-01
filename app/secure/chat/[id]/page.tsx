@@ -62,6 +62,7 @@ export default function SecureChatPage() {
   const [isExpired, setIsExpired] = useState(false);
   const [brandSettings, setBrandSettings] = useState<BrandSettings | null>(null);
   const [partnerId, setPartnerId] = useState<string | null>(null);
+  const [isSearchingReport, setIsSearchingReport] = useState(false);
 
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
@@ -77,11 +78,43 @@ export default function SecureChatPage() {
     }
   };
 
-  const handleDeleteReport = () => {
-    setReport(null);
-    toast("Report deleted", {
-      description: "Your report has been permanently deleted.",
-    });
+  const handleDeleteReport = async () => {
+    if (!chatId) {
+      toast.error("Error", {
+        description: "Unable to delete report - chat ID not found.",
+      });
+      return;
+    }
+
+    try {
+      // Delete from database
+      const response = await fetch('/api/delete-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ chatId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete report from database');
+      }
+
+      // Clear local states
+      setReport(null);
+      setSuggestedQuestions([]);
+      setError(null);
+      
+      toast.success("Report deleted", {
+        description: "Your report has been permanently deleted from the database.",
+      });
+    } catch (error) {
+      console.error('Delete report error:', error);
+      toast.error("Delete failed", {
+        description: error instanceof Error ? error.message : 'Failed to delete report',
+      });
+    }
   };
 
   const handleExpire = () => {
@@ -184,7 +217,9 @@ export default function SecureChatPage() {
   }, [linkId]);
 
   const loadExistingReport = async (currentChatId: string) => {
+    setIsSearchingReport(true);
     try {
+      console.log('🔍 SECURE CHAT: Searching for existing report with chatId:', currentChatId);
       const res = await fetch('/api/findReport', {
         method: 'POST',
         headers: {
@@ -194,8 +229,10 @@ export default function SecureChatPage() {
       });
 
       const data = await res.json();
+      console.log('🔍 SECURE CHAT: Find report response:', data);
 
       if (data.found) {
+        console.log('🔍 SECURE CHAT: Found existing report:', data.report);
         setReport({
           ...data.report,
           expiryTime: new Date(data.report.expiryTime),
@@ -204,9 +241,13 @@ export default function SecureChatPage() {
         if (data.report.suggestedQuestions) {
           setSuggestedQuestions(data.report.suggestedQuestions);
         }
+      } else {
+        console.log('🔍 SECURE CHAT: No existing report found');
       }
     } catch (err) {
       console.error("Failed to load existing report:", err);
+    } finally {
+      setIsSearchingReport(false);
     }
   };
 
@@ -217,15 +258,6 @@ export default function SecureChatPage() {
     setIsProcessing(true);
 
     try {
-      // Increment upload count
-      await fetch('/api/increment-upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ chatId }),
-      });
-
       // Route to different APIs based on file type
       const isPDF = data.fileType === 'application/pdf';
       const apiEndpoint = isPDF ? '/api/ocr-v3' : '/api/reportsummary';
@@ -251,6 +283,15 @@ export default function SecureChatPage() {
 
       const reportData = await response.json();
       console.log('🔍 SECURE CHAT: Report data received:', reportData);
+
+      // Only increment upload count after successful validation and analysis
+      await fetch('/api/increment-upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ chatId }),
+      });
 
       // Set report with database expiry time if available, otherwise use report time
       const finalExpiryTime = databaseExpiryTime || new Date(reportData.expiryTime);
@@ -285,7 +326,14 @@ export default function SecureChatPage() {
     return (
       <div className={`h-screen w-screen flex items-center justify-center bg-gradient-to-b from-background to-muted/30 backdrop-blur-xs ${poppins.className}`}>
         <div className="text-center space-y-4">
-          <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+          <div 
+            className="animate-spin w-12 h-12 border-4 border-t-transparent rounded-full mx-auto"
+            style={{
+              borderColor: partnerId && partnerId !== 'starter-user' && brandSettings?.customColors?.primary 
+                ? `${brandSettings.customColors.primary} ${brandSettings.customColors.primary} ${brandSettings.customColors.primary} transparent`
+                : 'var(--primary) var(--primary) var(--primary) transparent'
+            }}
+          ></div>
           <p className="text-muted-foreground">Validating secure link...</p>
         </div>
       </div>
@@ -383,9 +431,31 @@ export default function SecureChatPage() {
             {isProcessing ? (
               <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
                 <div className="text-center space-y-4">
-                  <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+                  <div 
+                    className="animate-spin w-12 h-12 border-4 border-t-transparent rounded-full mx-auto"
+                    style={{
+                      borderColor: partnerId && partnerId !== 'starter-user' && brandSettings?.customColors?.primary 
+                        ? `${brandSettings.customColors.primary} ${brandSettings.customColors.primary} ${brandSettings.customColors.primary} transparent`
+                        : 'var(--primary) var(--primary) var(--primary) transparent'
+                    }}
+                  ></div>
                   <p className="text-muted-foreground">Analyzing your document with AI...</p>
                   <p className="text-xs text-muted-foreground">This may take up to 40 seconds</p>
+                </div>
+              </Card>
+            ) : isSearchingReport ? (
+              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
+                <div className="text-center space-y-4">
+                  <div 
+                    className="animate-spin w-12 h-12 border-4 border-t-transparent rounded-full mx-auto"
+                    style={{
+                      borderColor: partnerId && partnerId !== 'starter-user' && brandSettings?.customColors?.primary 
+                        ? `${brandSettings.customColors.primary} ${brandSettings.customColors.primary} ${brandSettings.customColors.primary} transparent`
+                        : 'var(--primary) var(--primary) var(--primary) transparent'
+                    }}
+                  ></div>
+                  <p className="text-muted-foreground">Searching for existing reports...</p>
+                  <p className="text-xs text-muted-foreground">Checking database for previous uploads</p>
                 </div>
               </Card>
             ) : report ? (
@@ -394,6 +464,8 @@ export default function SecureChatPage() {
                 onDelete={handleDeleteReport}
                 onExpire={handleExpire}
                 databaseExpiryTime={databaseExpiryTime || undefined}
+                brandSettings={brandSettings}
+                partnerId={partnerId}
               />
             ) : (
               <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300">
@@ -458,9 +530,31 @@ export default function SecureChatPage() {
             {isProcessing ? (
               <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
                 <div className="text-center space-y-4">
-                  <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+                  <div 
+                    className="animate-spin w-12 h-12 border-4 border-t-transparent rounded-full mx-auto"
+                    style={{
+                      borderColor: partnerId && partnerId !== 'starter-user' && brandSettings?.customColors?.primary 
+                        ? `${brandSettings.customColors.primary} ${brandSettings.customColors.primary} ${brandSettings.customColors.primary} transparent`
+                        : 'var(--primary) var(--primary) var(--primary) transparent'
+                    }}
+                  ></div>
                   <p className="text-muted-foreground">Analyzing your document with AI...</p>
                   <p className="text-xs text-muted-foreground">This may take up to 40 seconds</p>
+                </div>
+              </Card>
+            ) : isSearchingReport ? (
+              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
+                <div className="text-center space-y-4">
+                  <div 
+                    className="animate-spin w-12 h-12 border-4 border-t-transparent rounded-full mx-auto"
+                    style={{
+                      borderColor: partnerId && partnerId !== 'starter-user' && brandSettings?.customColors?.primary 
+                        ? `${brandSettings.customColors.primary} ${brandSettings.customColors.primary} ${brandSettings.customColors.primary} transparent`
+                        : 'var(--primary) var(--primary) var(--primary) transparent'
+                    }}
+                  ></div>
+                  <p className="text-muted-foreground">Searching for existing reports...</p>
+                  <p className="text-xs text-muted-foreground">Checking database for previous uploads</p>
                 </div>
               </Card>
             ) : report ? (
@@ -469,6 +563,8 @@ export default function SecureChatPage() {
                 onDelete={handleDeleteReport}
                 onExpire={handleExpire}
                 databaseExpiryTime={databaseExpiryTime || undefined}
+                brandSettings={brandSettings}
+                partnerId={partnerId}
               />
             ) : (
               <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300">
@@ -524,7 +620,7 @@ export default function SecureChatPage() {
           </div>
 
           {/* Upload button when no report exists (for non-mobile only) */}
-          {!sidebarOpen && !report && !isProcessing && (
+          {!sidebarOpen && !report && !isProcessing && !isSearchingReport && (
             <Button 
               onClick={toggleSidebar}
               className="lg:hidden fixed right-4 top-20 z-50 rounded-full h-12 w-12 p-0 shadow-lg"
@@ -542,6 +638,7 @@ export default function SecureChatPage() {
               onAskQuestion={handleAskQuestion}
               report={report}
               brandSettings={brandSettings}
+              partnerId={partnerId}
             />
           </div>
         </div>

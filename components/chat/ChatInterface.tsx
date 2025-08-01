@@ -33,6 +33,7 @@ interface ChatInterfaceProps {
   onAskQuestion: (question: string) => void;
   report?: ReportData | null;
   brandSettings?: BrandSettings | null;
+  partnerId?: string | null;
 }
 
 interface Message {
@@ -48,7 +49,7 @@ function formatTextWithMarkers(text: string): string {
   if (!text) return '';
   
   // Replace ** markers with proper bold tags
-  let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong class="text-primary font-bold">$1</strong>');
+  let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold" style="color: var(--primary);">$1</strong>');
   
   // @ts-ignore
   formattedText = formattedText.replace(/(\d+)\.\s+(.+?)(?=\n\d+\.|\n\n|$)/gs, (match, number, content) => {
@@ -121,7 +122,7 @@ const MessageContent = ({ content, isFormatted }: { content: string; isFormatted
   return <div className="text-sm whitespace-pre-wrap overflow-wrap-break-word">{content}</div>;
 };
 
-const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestions = [], onAskQuestion, report: initialReport, brandSettings }: ChatInterfaceProps) => {
+const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestions = [], onAskQuestion, report: initialReport, brandSettings, partnerId }: ChatInterfaceProps) => {
     // Use partner's primary color only if it's not a starter user
     const shouldUsePartnerColor = brandSettings && brandSettings.brandName !== 'Vidal Chat';
     const iconColor = shouldUsePartnerColor && brandSettings?.customColors?.primary 
@@ -428,7 +429,14 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
                 className="h-6 w-6 rounded object-cover"
               />
             ) : (
-              <Bot className="h-4 w-4 text-primary" />
+                              <Bot 
+                  className="h-4 w-4" 
+                  style={{
+                    color: partnerId && partnerId !== 'starter-user' && brandSettings?.customColors?.primary 
+                      ? brandSettings.customColors.primary 
+                      : 'var(--primary)'
+                  }}
+                />
             )}
           </Avatar>
           <h3 className="font-medium">

@@ -130,11 +130,11 @@ export default function Signup() {
 
       Swal.fire({
         title: 'Signup Successful!',
-        text: 'Your account has been created. You can now upload your lab reports.',
+        text: 'Your account has been created successfully. Please log in to access your dashboard.',
         icon: 'success',
-        confirmButtonText: 'Start Uploading',
+        confirmButtonText: 'Go to Login',
       }).then(() => {
-        router.push('/dashboard/upload');
+        router.push('/login');
       });
     } catch (err) {
       Swal.fire({
