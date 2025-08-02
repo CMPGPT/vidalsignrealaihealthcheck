@@ -42,6 +42,13 @@ interface ProfileData {
   stripeWebhookSecret?: string;
 }
 
+interface PasswordChangeData {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+  otp: string;
+}
+
 interface BrandSettings {
   brandName: string;
   logoUrl: string;
@@ -103,8 +110,20 @@ export default function SettingsPage() {
     city: '',
     state: '',
     zip: '',
-    businessType: ''
+    businessType: '',
+    stripePublishableKey: '',
+    stripeSecretKey: '',
+    stripeWebhookSecret: '',
   });
+  const [passwordData, setPasswordData] = useState<PasswordChangeData>({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+    otp: '',
+  });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isSendingOTP, setIsSendingOTP] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
   const [brandSettings, setBrandSettings] = useState<BrandSettings>({
     brandName: '',
     logoUrl: '',
@@ -542,6 +561,95 @@ export default function SettingsPage() {
       toast.error('Failed to save Stripe credentials');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate passwords
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error("New passwords don't match");
+      return;
+    }
+    
+    if (passwordData.newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters long");
+      return;
+    }
+
+    if (!passwordData.otp) {
+      toast.error("Please enter the OTP sent to your email");
+      return;
+    }
+    
+    setIsChangingPassword(true);
+    
+    try {
+      const response = await fetch('/api/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          currentPassword: passwordData.currentPassword,
+          newPassword: passwordData.newPassword,
+          otp: passwordData.otp,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast.success("Password changed successfully!");
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+          otp: '',
+        });
+        setOtpSent(false);
+      } else {
+        toast.error(data.error || "Failed to change password");
+      }
+    } catch (error) {
+      console.error('Error changing password:', error);
+      toast.error("Failed to change password");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  // Send OTP for password change
+  const handleSendOTP = async () => {
+    if (!passwordData.currentPassword) {
+      toast.error("Please enter your current password first");
+      return;
+    }
+
+    setIsSendingOTP(true);
+    
+    try {
+      const response = await fetch('/api/send-password-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        toast.success("OTP sent to your email!");
+        setOtpSent(true);
+      } else {
+        toast.error(data.error || "Failed to send OTP");
+      }
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      toast.error("Failed to send OTP");
+    } finally {
+      setIsSendingOTP(false);
     }
   };
 
@@ -1048,24 +1156,75 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="current-password">Current Password</Label>
-                <Input id="current-password" type="password" />
-              </div>
-              
-              <Separator />
-              
-              <div className="space-y-2">
-                <Label htmlFor="new-password">New Password</Label>
-                <Input id="new-password" type="password" />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm New Password</Label>
-                <Input id="confirm-password" type="password" />
-              </div>
-              
-              <Button>Update Password</Button>
+              <form onSubmit={handlePasswordChange}>
+                <div className="space-y-2">
+                  <Label htmlFor="current-password">Current Password</Label>
+                  <Input 
+                    id="current-password" 
+                    type="password" 
+                    value={passwordData.currentPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                    placeholder="Enter your current password"
+                  />
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">New Password</Label>
+                  <Input 
+                    id="new-password" 
+                    type="password" 
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+                    placeholder="Enter your new password"
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Confirm New Password</Label>
+                  <Input 
+                    id="confirm-password" 
+                    type="password" 
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                    placeholder="Confirm your new password"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="otp">Verification Code</Label>
+                  <div className="flex gap-2">
+                    <Input 
+                      id="otp" 
+                      type="text" 
+                      value={passwordData.otp}
+                      onChange={(e) => setPasswordData(prev => ({ ...prev, otp: e.target.value }))}
+                      placeholder="Enter 4-digit OTP"
+                      maxLength={4}
+                    />
+                    <Button 
+                      type="button"
+                      onClick={handleSendOTP} 
+                      disabled={isSendingOTP || !passwordData.currentPassword}
+                      variant="outline"
+                    >
+                      {isSendingOTP && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {isSendingOTP ? 'Sending...' : 'Send OTP'}
+                    </Button>
+                  </div>
+                  {otpSent && (
+                    <p className="text-sm text-green-600">
+                      ✓ OTP sent to your email. Check your inbox.
+                    </p>
+                  )}
+                </div>
+                
+                <Button type="submit" disabled={isChangingPassword || !otpSent}>
+                  {isChangingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isChangingPassword ? 'Changing Password...' : 'Update Password'}
+                </Button>
+              </form>
             </CardContent>
           </Card>
           

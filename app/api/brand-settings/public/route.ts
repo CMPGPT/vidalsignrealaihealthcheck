@@ -16,12 +16,19 @@ export async function GET(req: NextRequest) {
 
     await dbConnect();
 
-    // Find brand settings by brand name (case-insensitive)
-    // The brandId in the URL is typically a URL-friendly version of the brand name
+    // First try to find by userId (since we're now using userId in URLs)
     let brandSettings = await BrandSettings.findOne({ 
-      brandName: { $regex: new RegExp(brandId.replace(/-/g, ' '), 'i') },
+      userId: brandId,
       isDeployed: true // Only return deployed websites
     });
+
+    // If not found by userId, try by brand name (case-insensitive)
+    if (!brandSettings) {
+      brandSettings = await BrandSettings.findOne({ 
+        brandName: { $regex: new RegExp(brandId.replace(/-/g, ' '), 'i') },
+        isDeployed: true
+      });
+    }
 
     // If not found, try exact match
     if (!brandSettings) {
@@ -53,6 +60,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ 
       success: true,
       brandSettings: {
+        userId: brandSettings.userId, // Include userId for contact info lookup
         brandName: brandSettings.brandName,
         logoUrl: brandSettings.logoUrl || '',
         selectedTheme: brandSettings.selectedTheme,

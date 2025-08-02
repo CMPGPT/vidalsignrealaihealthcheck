@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus, HelpCircle } from "lucide-react";
+import { Plus, Minus, HelpCircle, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -16,6 +16,14 @@ import { Input } from "@/components/ui/input";
 // Import centralized data
 import { qrPackages } from "@/data/mock/partnerUsers";
 import { useSession } from "next-auth/react";
+import { Montserrat } from 'next/font/google';
+
+// Load Montserrat font
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-montserrat',
+});
 
 interface QRPurchaseModalProps {
   isOpen: boolean;
@@ -27,6 +35,7 @@ const QRPurchaseModal = ({ isOpen, onClose }: QRPurchaseModalProps) => {
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [customQrCount, setCustomQrCount] = useState(100);
   const [activeTab, setActiveTab] = useState("packages");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   
   // Add style to head for webkit scrollbar
   useEffect(() => {
@@ -206,6 +215,8 @@ const QRPurchaseModal = ({ isOpen, onClose }: QRPurchaseModalProps) => {
       return;
     }
 
+    setIsProcessingPayment(true);
+
     // Use a default partnerId if session is not available
     // In production, you should require login, but this helps with testing
     const partnerId = session?.user ? (session.user as any).unique_id || "P-001" : "P-001";
@@ -241,6 +252,8 @@ const QRPurchaseModal = ({ isOpen, onClose }: QRPurchaseModalProps) => {
     } catch (error) {
       console.error('Checkout error:', error);
       alert(`Checkout failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsProcessingPayment(false);
     }
   };
 
@@ -257,7 +270,7 @@ const QRPurchaseModal = ({ isOpen, onClose }: QRPurchaseModalProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] w-[95vw] max-h-[90vh] h-auto rounded-lg shadow-lg flex flex-col overflow-hidden p-0">
+      <DialogContent className={`sm:max-w-[600px] w-[95vw] max-h-[90vh] h-auto rounded-lg shadow-lg flex flex-col overflow-hidden p-0 ${montserrat.className}`}>
         <div className="p-3 sm:p-4 flex-shrink-0">
           <DialogHeader className="space-y-1 mb-2">
             <DialogTitle className="text-lg sm:text-xl">Purchase QR Code Batch</DialogTitle>
@@ -406,12 +419,19 @@ const QRPurchaseModal = ({ isOpen, onClose }: QRPurchaseModalProps) => {
                 Cancel
               </Button>
               <Button 
-                disabled={activeTab === "packages" && !selectedPackage}
+                disabled={activeTab === "packages" && !selectedPackage || isProcessingPayment}
                 onClick={handlePurchase}
                 size="sm"
                 className="h-9"
               >
-                Proceed to Payment
+                {isProcessingPayment ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Proceed to Payment"
+                )}
               </Button>
             </div>
           </DialogFooter>

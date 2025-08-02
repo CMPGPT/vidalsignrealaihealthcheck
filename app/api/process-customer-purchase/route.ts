@@ -15,10 +15,23 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 CUSTOMER PURCHASE: Processing customer purchase for:', { sessionId, brand, email, plan, quantity });
 
-    // Validate required fields
-    if (!sessionId || !brand || !email || !plan || !quantity) {
-      console.error('❌ CUSTOMER PURCHASE: Missing required fields:', { sessionId, brand, email, plan, quantity });
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    // Improved validation - check for empty strings and undefined values
+    const missingFields = [];
+    if (!sessionId || sessionId.trim() === '') missingFields.push('sessionId');
+    if (!brand || brand.trim() === '') missingFields.push('brand');
+    if (!email || email.trim() === '') missingFields.push('email');
+    if (!plan || plan.trim() === '') missingFields.push('plan');
+    if (!quantity || quantity.trim() === '') missingFields.push('quantity');
+
+    if (missingFields.length > 0) {
+      console.error('❌ CUSTOMER PURCHASE: Missing or empty required fields:', missingFields);
+      console.error('❌ CUSTOMER PURCHASE: Received values:', { sessionId, brand, email, plan, quantity });
+      
+      // Return a more user-friendly error message
+      return NextResponse.json({ 
+        error: 'Encountering error please try again later',
+        details: 'Some required information is missing. Please try again.'
+      }, { status: 400 });
     }
 
     await dbConnect();
@@ -52,14 +65,14 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Find the partner by brand name
+    // Find the partner by userId (brand parameter now contains userId)
     const brandSettings = await BrandSettings.findOne({ 
-      brandName: { $regex: new RegExp(brand, 'i') },
+      userId: brand,
       isDeployed: true 
     });
 
     if (!brandSettings) {
-      console.log('❌ CUSTOMER PURCHASE: Brand not found:', brand);
+      console.log('❌ CUSTOMER PURCHASE: Brand not found for userId:', brand);
       return NextResponse.json({ error: 'Brand not found' }, { status: 404 });
     }
 
@@ -86,7 +99,7 @@ export async function POST(request: NextRequest) {
     if (unusedSecureLinks.length < quantityNumber) {
       console.log('❌ CUSTOMER PURCHASE: Not enough unused secure links available');
       return NextResponse.json({ 
-        error: `Not enough unused secure links available. Partner has ${unusedSecureLinks.length} unused links but customer requested ${quantityNumber}. Partner needs to purchase more QR codes.` 
+        error: 'Encountering error please try again later' 
       }, { status: 400 });
     }
 
@@ -135,7 +148,7 @@ export async function POST(request: NextRequest) {
     const priceMatch = plan.match(/\$(\d+\.?\d*)/);
     if (!priceMatch) {
       console.error('❌ CUSTOMER PURCHASE: Could not extract price from plan string:', plan);
-      return NextResponse.json({ error: 'Invalid plan price format. Please contact support.' }, { status: 400 });
+      return NextResponse.json({ error: 'Encountering error please try again later' }, { status: 400 });
     }
     
     // Use the exact price from the plan string (from branding/pricing section)
@@ -145,7 +158,7 @@ export async function POST(request: NextRequest) {
     // Validate the price
     if (isNaN(priceAmount) || priceAmount <= 0) {
       console.error('❌ CUSTOMER PURCHASE: Invalid price amount:', priceAmount);
-      return NextResponse.json({ error: 'Invalid price amount. Please contact support.' }, { status: 400 });
+      return NextResponse.json({ error: 'Encountering error please try again later' }, { status: 400 });
     }
 
     // Create PartnerTransaction record for this sale

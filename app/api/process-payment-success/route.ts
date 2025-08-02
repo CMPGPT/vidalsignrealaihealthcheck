@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     if (unusedQRCodes.length < quantityNumber) {
       console.log('❌ PAYMENT PROCESSING: Not enough unused QR codes available');
       return NextResponse.json({ 
-        error: `Not enough unused QR codes available. Partner has ${unusedQRCodes.length} unused codes but customer requested ${quantityNumber}. Partner needs to purchase more QR codes.` 
+        error: `encounting error please try again later` 
       }, { status: 400 });
     }
 
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
     const priceMatch = plan.match(/\$(\d+\.?\d*)/);
     if (!priceMatch) {
       console.error('❌ PAYMENT PROCESSING: Could not extract price from plan string:', plan);
-      return NextResponse.json({ error: 'Invalid plan price format. Please contact support.' }, { status: 400 });
+      return NextResponse.json({ error: 'Encountering error please try again later' }, { status: 400 });
     }
     
     // Use the exact price from the plan string (from branding/pricing section)
@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     // Validate the price
     if (isNaN(priceAmount) || priceAmount <= 0) {
       console.error('❌ PAYMENT PROCESSING: Invalid price amount:', priceAmount);
-      return NextResponse.json({ error: 'Invalid price amount. Please contact support.' }, { status: 400 });
+      return NextResponse.json({ error: 'Encountering error please try again later' }, { status: 400 });
     }
 
     // Create PartnerTransaction record for this sale

@@ -18,7 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Download, Eye, Trash2, Plus, History, Link, Copy, ChevronLeft, ChevronRight, RefreshCw, Loader2 } from "lucide-react";
+import { MoreHorizontal, Download, Eye, Trash2, Plus, History, Link, Copy, ChevronLeft, ChevronRight, RefreshCw, Loader2, QrCode } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import QRPurchaseModal from "@/components/partners/QRPurchaseModal";
 import {
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast, Toaster } from "sonner";
 import { QRCodeCanvas } from 'qrcode.react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const TABS = [
   { key: 'all', label: 'All QR Codes' },
@@ -62,8 +63,8 @@ export default function QRCodesPage() {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
-  const [secureLinks, setSecureLinks] = useState([]);
-  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [secureLinks, setSecureLinks] = useState<any[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
   const [statistics, setStatistics] = useState<Statistics>({ total: 0, used: 0, unused: 0, sold: 0, unsold: 0 });
   const [pagination, setPagination] = useState<Pagination>({
     currentPage: 1,
@@ -75,6 +76,9 @@ export default function QRCodesPage() {
   });
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [qrPreviewOpen, setQrPreviewOpen] = useState(false);
+  const [qrPreviewData, setQrPreviewData] = useState<{ qrCodeUrl: string; secureLink: string; brandName: string } | null>(null);
+  const [qrPreviewLoading, setQrPreviewLoading] = useState(false);
 
   // Get partner ID from session (MongoDB _id)
   const partnerId = (session?.user as any)?.partnerId || null;
@@ -299,25 +303,100 @@ export default function QRCodesPage() {
   };
 
   // Download QR code as image
-  const handleDownloadQRCode = (row: any) => {
+  const handleDownloadQRCode = async (row: any) => {
     try {
-      const canvas = document.getElementById(`qr-canvas-${row.id}`) as HTMLCanvasElement;
-      if (canvas) {
-        const url = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${row.id}.png`;
-        a.click();
-      } else {
-        toast.error('Could not download QR code', {
-          description: 'The QR code image could not be generated.',
+      const secureLinkUrl = getSecureLinkUrl(row);
+      if (!secureLinkUrl) {
+        toast.error('Could not generate QR code', {
+          description: 'Secure link URL not found.',
         });
+        return;
       }
+
+      // Generate branded QR code
+      const response = await fetch('/api/generate-branded-qr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          secureLinkId: row.id,
+          partnerId: partnerId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate QR code');
+      }
+
+      const data = await response.json();
+      
+      // Create download link
+      const a = document.createElement('a');
+      a.href = data.qrCodeDataUrl;
+      a.download = `${row.id}-qr-code.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      toast.success('QR code downloaded successfully!');
     } catch (error) {
       console.error('Error downloading QR code:', error);
       toast.error('Could not download QR code', {
         description: error instanceof Error ? error.message : 'An error occurred',
       });
+    }
+  };
+
+  // Generate QR code for display
+  const generateQRCodeForDisplay = async (row: any) => {
+    try {
+      const response = await fetch('/api/generate-branded-qr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          secureLinkId: row.id,
+          partnerId: partnerId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate QR code');
+      }
+
+      const data = await response.json();
+      return data.qrCodeDataUrl;
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      return null;
+    }
+  };
+
+  // Preview QR code
+  const handlePreviewQRCode = async (row: any) => {
+    setQrPreviewLoading(true);
+    setQrPreviewOpen(true);
+    
+    try {
+      const qrCodeUrl = await generateQRCodeForDisplay(row);
+      const secureLinkUrl = getSecureLinkUrl(row);
+      
+      if (qrCodeUrl && secureLinkUrl) {
+        setQrPreviewData({
+          qrCodeUrl,
+          secureLink: secureLinkUrl,
+          brandName: 'Your Brand' // This will be fetched from brand settings
+        });
+      } else {
+        toast.error('Could not generate QR code preview');
+      }
+    } catch (error) {
+      console.error('Error previewing QR code:', error);
+      toast.error('Could not generate QR code preview');
+    } finally {
+      setQrPreviewLoading(false);
     }
   };
 
@@ -495,6 +574,10 @@ export default function QRCodesPage() {
                               <Download className="mr-2 h-4 w-4" />
                               Download QR
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handlePreviewQRCode(row)}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              Preview QR
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -590,6 +673,43 @@ export default function QRCodesPage() {
                   </Card>
                 ))
               )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* QR Code Preview Modal */}
+      <Dialog open={qrPreviewOpen} onOpenChange={setQrPreviewOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>QR Code Preview</DialogTitle>
+            <DialogDescription>
+              Preview the QR code for a secure link.
+            </DialogDescription>
+          </DialogHeader>
+          {qrPreviewLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" />
+              <span>Loading QR code preview...</span>
+            </div>
+          ) : qrPreviewData ? (
+            <div className="flex flex-col items-center justify-center py-8">
+                             <QRCodeCanvas
+                 value={qrPreviewData.secureLink}
+                 size={250}
+                 level="H"
+                 includeMargin={true}
+                 bgColor="#FFFFFF"
+                 fgColor="#000000"
+               />
+              <p className="mt-4 text-center text-lg font-semibold">{qrPreviewData.brandName}</p>
+              <p className="text-center text-sm text-muted-foreground">
+                Scan this QR code to access the secure link.
+              </p>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <p>No QR code data available for preview.</p>
             </div>
           )}
         </DialogContent>

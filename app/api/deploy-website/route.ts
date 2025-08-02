@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import dbConnect from '@/lib/dbConnect';
 import BrandSettings, { generatePartnerUrl } from '@/models/BrandSettings';
-import PartnerUser from '@/models/PartnerUser';
-import { doubleEncrypt, doubleDecrypt } from '@/lib/encryption';
 
 // POST - Deploy website for the authenticated user
 export async function POST(req: NextRequest) {
@@ -21,41 +19,13 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    // Find the user first to get their ID
-    let user = await PartnerUser.findOne({ email: token.email });
-    
-    if (!user) {
-      console.log('🔍 DEPLOY WEBSITE: Direct lookup failed, trying encrypted email');
-      try {
-        const encryptedEmail = doubleEncrypt(token.email);
-        user = await PartnerUser.findOne({ email: encryptedEmail });
-      } catch (error) {
-        console.log('🔍 DEPLOY WEBSITE: Encryption failed, trying to decrypt all emails');
-        const allUsers = await PartnerUser.find();
-        
-        for (const potentialUser of allUsers) {
-          try {
-            const decryptedEmail = doubleDecrypt(potentialUser.email);
-            if (decryptedEmail === token.email) {
-              user = potentialUser;
-              break;
-            }
-          } catch (e) {
-            continue;
-          }
-        }
-      }
-    }
-
-    if (!user) {
-      console.log('❌ DEPLOY WEBSITE: User not found');
-      return NextResponse.json({ message: 'User not found' }, { status: 404 });
-    }
-
-    console.log('✅ DEPLOY WEBSITE: User found:', user._id);
-
-    // Find brand settings for this user
-    const brandSettings = await BrandSettings.findOne({ userId: String(user._id) });
+    // Find brand settings for this user using email
+    const brandSettings = await BrandSettings.findOne({ 
+      $or: [
+        { userId: token.email },
+        { userId: token.sub }
+      ]
+    });
 
     if (!brandSettings) {
       console.log('❌ DEPLOY WEBSITE: No brand settings found');
@@ -73,8 +43,8 @@ export async function POST(req: NextRequest) {
 
     console.log('✅ DEPLOY WEBSITE: Brand settings found:', brandSettings.brandName);
 
-    // Generate partner website URL
-    const partnerUrl = generatePartnerUrl(brandSettings.brandName);
+    // Generate partner website URL using userId
+    const partnerUrl = `/partnerswebsite/${brandSettings.userId}`;
     const fullWebsiteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${partnerUrl}`;
     
     console.log('🔍 DEPLOY WEBSITE: Generated partner URL:', fullWebsiteUrl);
@@ -83,15 +53,6 @@ export async function POST(req: NextRequest) {
     try {
       console.log('🚀 DEPLOY WEBSITE: Starting deployment process...');
       
-      // In a real implementation, here you would:
-      // 1. Generate the HTML/CSS/JS for the website using the brand settings ✅
-      // 2. Deploy to a CDN or hosting service
-      // 3. Configure DNS for the subdomain
-      // 4. Wait for deployment to complete
-      
-      // For now, the website template is served via /api/website-template?brand=${brandName}
-      // and can be accessed at the subdomain URL which would redirect to the template
-      
       // Simulate deployment delay
       await new Promise(resolve => setTimeout(resolve, 2000));
       
@@ -99,7 +60,7 @@ export async function POST(req: NextRequest) {
       
       // Update brand settings with deployment info
       const updatedBrandSettings = await BrandSettings.findOneAndUpdate(
-        { userId: String(user._id) },
+        { _id: brandSettings._id },
         { 
           isDeployed: true,
           websiteUrl: fullWebsiteUrl,
@@ -163,41 +124,13 @@ export async function GET(req: NextRequest) {
 
     await dbConnect();
 
-    // Find the user first to get their ID
-    let user = await PartnerUser.findOne({ email: token.email });
-    
-    if (!user) {
-      console.log('🔍 GET DEPLOYMENT STATUS: Direct lookup failed, trying encrypted email');
-      try {
-        const encryptedEmail = doubleEncrypt(token.email);
-        user = await PartnerUser.findOne({ email: encryptedEmail });
-      } catch (error) {
-        console.log('🔍 GET DEPLOYMENT STATUS: Encryption failed, trying to decrypt all emails');
-        const allUsers = await PartnerUser.find();
-        
-        for (const potentialUser of allUsers) {
-          try {
-            const decryptedEmail = doubleDecrypt(potentialUser.email);
-            if (decryptedEmail === token.email) {
-              user = potentialUser;
-              break;
-            }
-          } catch (e) {
-            continue;
-          }
-        }
-      }
-    }
-
-    if (!user) {
-      console.log('❌ GET DEPLOYMENT STATUS: User not found');
-      return NextResponse.json({ message: 'User not found' }, { status: 404 });
-    }
-
-    console.log('✅ GET DEPLOYMENT STATUS: User found:', user._id);
-
-    // Find brand settings for this user
-    const brandSettings = await BrandSettings.findOne({ userId: String(user._id) });
+    // Find brand settings for this user using email
+    const brandSettings = await BrandSettings.findOne({ 
+      $or: [
+        { userId: token.email },
+        { userId: token.sub }
+      ]
+    });
 
     if (!brandSettings) {
       console.log('❌ GET DEPLOYMENT STATUS: No brand settings found');

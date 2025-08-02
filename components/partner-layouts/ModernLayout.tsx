@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface BrandSettings {
   brandName: string;
@@ -47,11 +47,17 @@ interface BrandSettings {
   websiteUrl: string;
 }
 
-export default function ModernLayout({ brandSettings, onPaymentClick }: { brandSettings: BrandSettings; onPaymentClick: (plan: any) => void }) {
+interface ContactInfo {
+  email: string;
+  phone: string;
+}
+
+export default function ModernLayout({ brandSettings, onPaymentClick, contactInfo }: { brandSettings: BrandSettings; onPaymentClick: (plan: any) => void; contactInfo?: ContactInfo }) {
   const { brandName, logoUrl, customColors, heroSection, featuresSection, pricingSection } = brandSettings;
   const primaryColor = customColors.primary;
   const secondaryColor = customColors.secondary;
   const accentColor = customColors.accent;
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.style.setProperty('--brand-primary', primaryColor);
@@ -60,80 +66,177 @@ export default function ModernLayout({ brandSettings, onPaymentClick }: { brandS
     document.title = `${brandName} - AI Health Check`;
   }, [brandName, primaryColor, secondaryColor, accentColor]);
 
+  const handleMobileMenuToggle = () => {
+    setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const handleMobileNavClick = (sectionId: string) => {
+    setMobileMenuOpen(false);
+    document.getElementById(sectionId)?.scrollIntoView({ 
+      behavior: 'smooth' 
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white font-['Inter',sans-serif]">
       <style jsx>{`
-        .bg-brand-primary { background-color: ${primaryColor}; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
         .text-brand-primary { color: ${primaryColor}; }
+        .bg-brand-primary { background-color: ${primaryColor}; }
         .border-brand-primary { border-color: ${primaryColor}; }
-        .bg-brand-secondary { background-color: ${secondaryColor}; }
         .text-brand-secondary { color: ${secondaryColor}; }
-        .hover\\:bg-brand-primary:hover { background-color: ${primaryColor}; }
-        .hover\\:text-brand-primary:hover { color: ${primaryColor}; }
-        .bg-brand-primary-subtle { background-color: ${primaryColor}10; }
-        .bg-brand-secondary-subtle { background-color: ${secondaryColor}10; }
-        .bg-brand-accent-subtle { background-color: ${accentColor}10; }
-        .border-brand-primary-subtle { border-color: ${primaryColor}40; }
-        .modern-gradient-subtle {
-          background: linear-gradient(135deg, ${primaryColor}05, ${secondaryColor}05, ${accentColor}05);
+        .bg-brand-secondary { background-color: ${secondaryColor}; }
+        .border-brand-secondary { border-color: ${secondaryColor}; }
+        .text-brand-accent { color: ${accentColor}; }
+        .bg-brand-accent { background-color: ${accentColor}; }
+        .border-brand-accent { border-color: ${accentColor}; }
+        
+        .brand-gradient {
+          background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
         }
-        .modern-gradient-text {
+        .brand-gradient-text {
           background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
         }
+        .brand-accent-bg {
+          background: linear-gradient(135deg, ${primaryColor}15, ${secondaryColor}15);
+        }
+        .minimal-shadow {
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        .minimal-hover {
+          transition: all 0.2s ease;
+        }
+        .minimal-hover:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .brand-button {
+          background: linear-gradient(135deg, ${primaryColor}, ${secondaryColor});
+          color: white;
+        }
+        .brand-button:hover {
+          background: linear-gradient(135deg, ${secondaryColor}, ${primaryColor});
+        }
       `}</style>
 
-      {/* Minimal Navigation */}
-      <nav className="bg-white border-b border-gray-100 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            <div className="flex items-center space-x-4">
+      {/* Modern Navigation with Brand Colors */}
+      <nav className="bg-white/90 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-50">
+        <div className="max-w-4xl mx-auto px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-3">
               {logoUrl ? (
-                <img src={logoUrl} alt={brandName} className="h-12 w-12 rounded-lg object-cover" />
+                <img src={logoUrl} alt={brandName} className="h-8 w-8 rounded-lg" />
               ) : (
-                <div className="h-12 w-12 rounded-lg text-brand-primary font-bold text-lg flex items-center justify-center bg-gray-50 border border-gray-200">
-                  {brandName.substring(0, 2).toUpperCase()}
+                <div className="h-8 w-8 rounded-lg brand-gradient flex items-center justify-center">
+                  <span className="text-sm font-medium text-white">{brandName.substring(0, 2).toUpperCase()}</span>
                 </div>
               )}
-              <span className="text-2xl font-light text-gray-900">{brandName}</span>
+              <span className="text-lg font-medium brand-gradient-text">{brandName}</span>
             </div>
-            <div className="hidden md:flex items-center space-x-12">
-              <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors font-light">Features</a>
+            
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-8">
+              <a href="#features" className="text-gray-600 hover:text-brand-primary transition-colors text-sm">Features</a>
               {pricingSection.enabled && (
-                <a href="#pricing" className="text-gray-600 hover:text-gray-900 transition-colors font-light">Pricing</a>
+                <a href="#pricing" className="text-gray-600 hover:text-brand-primary transition-colors text-sm">Pricing</a>
               )}
-              <a href="#about" className="text-gray-600 hover:text-gray-900 transition-colors font-light">About</a>
-                          <button 
-              onClick={() => {
-                if (pricingSection.enabled) {
-                  document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
-                } else {
-                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
-                }
-              }}
-              className="bg-brand-primary text-white px-8 py-3 rounded-lg font-light hover:bg-brand-secondary transition-colors"
-            >
-              Get Started
-            </button>
+              <a href="#about" className="text-gray-600 hover:text-brand-primary transition-colors text-sm">About</a>
+              <button 
+                onClick={() => {
+                  if (pricingSection.enabled) {
+                    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                  } else {
+                    document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+                className="brand-button px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300"
+              >
+                Get Started
+              </button>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <div className="md:hidden">
+              <button 
+                onClick={handleMobileMenuToggle}
+                className="text-gray-600 hover:text-brand-primary transition-colors p-1"
+                aria-label="Toggle mobile menu"
+              >
+                {mobileMenuOpen ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"/>
+                  </svg>
+                )}
+              </button>
             </div>
           </div>
+
+          {/* Mobile Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-gray-100 py-4">
+              <div className="space-y-3">
+                <a 
+                  href="#features" 
+                  onClick={() => handleMobileNavClick('features')}
+                  className="block text-gray-600 hover:text-brand-primary transition-colors text-sm py-2"
+                >
+                  Features
+                </a>
+                {pricingSection.enabled && (
+                  <a 
+                    href="#pricing" 
+                    onClick={() => handleMobileNavClick('pricing')}
+                    className="block text-gray-600 hover:text-brand-primary transition-colors text-sm py-2"
+                  >
+                    Pricing
+                  </a>
+                )}
+                <a 
+                  href="#about" 
+                  onClick={() => handleMobileNavClick('about')}
+                  className="block text-gray-600 hover:text-brand-primary transition-colors text-sm py-2"
+                >
+                  About
+                </a>
+                <button 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (pricingSection.enabled) {
+                      document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+                    } else {
+                      document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  className="w-full brand-button px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300"
+                >
+                  Get Started
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
-      {/* Minimalist Hero Section */}
-      <section className="py-32 px-6 lg:px-8 modern-gradient-subtle">
-        <div className="max-w-4xl mx-auto text-center">
-          <h1 className="text-6xl md:text-8xl font-extralight mb-8 leading-tight">
-            <span className="modern-gradient-text">{heroSection.headline.split(' ').slice(0, 2).join(' ')}</span>
-            <br />
-            <span className="text-gray-900">{heroSection.headline.split(' ').slice(2).join(' ')}</span>
+      {/* Modern Hero Section with Brand Colors */}
+      <section className="py-32 px-8">
+        <div className="max-w-3xl mx-auto text-center">
+          <h1 className="text-4xl md:text-6xl font-light text-gray-900 mb-8 leading-tight">
+            <span className="brand-gradient-text">{heroSection.headline}</span>
           </h1>
-          <p className="text-xl font-light text-gray-600 mb-16 max-w-2xl mx-auto leading-relaxed">
+          
+          <p className="text-lg text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
             {heroSection.subheadline}
           </p>
-          <div className="flex flex-col sm:flex-row gap-6 justify-center">
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
             <button 
               onClick={() => {
                 if (pricingSection.enabled) {
@@ -142,7 +245,7 @@ export default function ModernLayout({ brandSettings, onPaymentClick }: { brandS
                   document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
                 }
               }}
-              className="bg-brand-primary text-white px-12 py-4 text-lg font-light hover:bg-brand-secondary transition-colors"
+              className="brand-button px-8 py-3 rounded-lg font-medium transition-all duration-300"
             >
               {heroSection.ctaText}
             </button>
@@ -150,47 +253,43 @@ export default function ModernLayout({ brandSettings, onPaymentClick }: { brandS
               onClick={() => {
                 document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="border border-brand-primary text-brand-primary px-12 py-4 text-lg font-light hover:bg-brand-primary hover:text-white transition-colors"
+              className="border border-gray-300 text-gray-700 px-8 py-3 rounded-lg font-medium hover:border-brand-primary hover:text-brand-primary transition-colors"
             >
               {heroSection.secondaryCtaText}
             </button>
           </div>
-        </div>
-      </section>
-
-      {/* Stats Section - Minimal */}
-      {heroSection.stats && heroSection.stats.length > 0 && (
-        <section className="py-20 border-t border-gray-100">
-          <div className="max-w-6xl mx-auto px-6 lg:px-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          
+          {/* Stats with Brand Colors */}
+          {heroSection.stats && heroSection.stats.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pt-16 border-t border-gray-100">
               {heroSection.stats.map((stat, index) => (
-                <div key={index} className="text-center p-8 bg-brand-primary-subtle rounded-xl hover:bg-brand-secondary-subtle transition-colors">
-                  <div className="text-4xl md:text-5xl font-extralight modern-gradient-text mb-2">
+                <div key={index} className="text-center">
+                  <div className="text-2xl font-semibold brand-gradient-text mb-1">
                     {stat.value}
                   </div>
-                  <div className="text-gray-600 font-light uppercase tracking-wide text-sm">
+                  <div className="text-sm text-gray-500">
                     {stat.label}
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-      )}
+          )}
+        </div>
+      </section>
 
-      {/* Features Section - Clean Grid */}
-      <section id="features" className="py-32 px-6 lg:px-8 bg-brand-secondary-subtle">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-20">
-            <h2 className="text-5xl font-extralight mb-6">
-              <span className="modern-gradient-text">{featuresSection.title}</span>
+      {/* Modern Features Section with Brand Colors */}
+      <section id="features" className="py-24 px-8 brand-accent-bg">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-light brand-gradient-text mb-4">
+              {featuresSection.title}
             </h2>
-            <p className="text-xl font-light text-gray-600 max-w-2xl mx-auto">
+            <p className="text-gray-600 max-w-2xl mx-auto">
               {featuresSection.subtitle}
             </p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-16">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {featuresSection.features.map((feature, index) => {
               const getIconSvg = (iconName: string) => {
                 switch (iconName) {
@@ -206,14 +305,14 @@ export default function ModernLayout({ brandSettings, onPaymentClick }: { brandS
               };
               
               return (
-                <div key={index} className="text-center p-8 bg-white rounded-xl hover:bg-brand-primary-subtle transition-colors">
-                  <div className="w-16 h-16 mx-auto mb-8 bg-brand-accent-subtle rounded-lg flex items-center justify-center border-2 border-brand-primary-subtle">
-                    <svg className="w-8 h-8 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div key={index} className="bg-white p-8 rounded-lg minimal-shadow minimal-hover">
+                  <div className="w-12 h-12 brand-gradient rounded-lg flex items-center justify-center mb-6">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       {getIconSvg(feature.icon)}
                     </svg>
                   </div>
-                  <h3 className="text-2xl font-light modern-gradient-text mb-4">{feature.title}</h3>
-                  <p className="text-gray-600 font-light leading-relaxed">{feature.description}</p>
+                  <h3 className="text-xl font-medium text-gray-900 mb-3">{feature.title}</h3>
+                  <p className="text-gray-600 text-sm leading-relaxed">{feature.description}</p>
                 </div>
               );
             })}
@@ -221,78 +320,64 @@ export default function ModernLayout({ brandSettings, onPaymentClick }: { brandS
         </div>
       </section>
 
-      {/* Pricing Section - Minimal Cards */}
+      {/* Modern Pricing Section with Brand Colors */}
       {pricingSection.enabled && (
-        <section id="pricing" className="py-32 modern-gradient-subtle px-6 lg:px-8">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-20">
-              <h2 className="text-5xl font-extralight mb-6">
-                <span className="modern-gradient-text">{pricingSection.title}</span>
+        <section id="pricing" className="py-24 px-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-16">
+              <h2 className="text-3xl md:text-4xl font-light brand-gradient-text mb-4">
+                {pricingSection.title}
               </h2>
-              <p className="text-xl font-light text-gray-600 max-w-2xl mx-auto">
+              <p className="text-gray-600 max-w-2xl mx-auto">
                 {pricingSection.subtitle}
               </p>
             </div>
             
-            <div className={`grid gap-8 ${pricingSection.plans.length === 1 ? 'max-w-md mx-auto' : 'grid-cols-1 md:grid-cols-2 max-w-4xl mx-auto'}`}>
+            <div className={`grid gap-6 ${pricingSection.plans.length === 1 ? 'max-w-md mx-auto' : 'grid-cols-1 md:grid-cols-2 max-w-3xl mx-auto'}`}>
               {pricingSection.plans.map((plan, index) => (
-                <div 
-                  key={index} 
-                  className={`bg-white p-12 ${
-                    plan.popular 
-                      ? 'border-2 border-brand-primary' 
-                      : 'border border-gray-200'
-                  } transition-all duration-200`}
-                >
+                <div key={index} className={`bg-white p-8 rounded-lg minimal-shadow minimal-hover ${
+                  plan.popular ? 'border-2 border-brand-primary' : 'border border-gray-200'
+                }`}>
                   {plan.popular && (
-                    <div className="text-center mb-8">
-                      <div className="bg-brand-accent text-white px-6 py-2 text-sm font-light uppercase tracking-wide">
+                    <div className="text-center mb-6">
+                      <span className="brand-gradient text-white px-3 py-1 rounded-full text-xs font-medium">
                         Most Popular
-                      </div>
+                      </span>
                     </div>
                   )}
                   
-                  <div className="text-center mb-12">
-                    <h3 className="text-2xl font-light text-gray-900 mb-4">{plan.name}</h3>
-                    <p className="text-gray-600 font-light mb-8">{plan.description}</p>
+                  <div className="text-center mb-8">
+                    <h3 className="text-2xl font-medium text-gray-900 mb-2">{plan.name}</h3>
+                    <p className="text-gray-600 text-sm mb-6">{plan.description}</p>
                     
-                    <div className="mb-8">
-                      <div className="flex items-baseline justify-center mb-2">
-                        <span className="text-6xl font-extralight text-gray-900">{plan.price}</span>
-                        <span className="text-gray-600 ml-2 font-light">for {plan.quantity}</span>
+                    <div className="mb-6">
+                      <div className="flex items-baseline justify-center mb-1">
+                        <span className="text-4xl font-light brand-gradient-text">{plan.price}</span>
+                        <span className="text-gray-500 ml-1 text-sm">for {plan.quantity}</span>
                       </div>
                     </div>
                     
                     <button 
                       onClick={() => onPaymentClick(plan)}
-                      className={`w-full py-4 px-8 font-light transition-all duration-200 ${
+                      className={`w-full py-3 px-6 rounded-lg font-medium transition-all duration-300 ${
                         plan.popular
-                          ? 'bg-brand-primary text-white hover:bg-brand-secondary'
-                          : 'border border-brand-primary text-brand-primary hover:bg-brand-primary hover:text-white'
+                          ? 'brand-button'
+                          : 'border border-gray-300 text-gray-700 hover:border-brand-primary hover:text-brand-primary'
                       }`}
                     >
                       {plan.buttonText}
                     </button>
                   </div>
                   
-                  <div className="space-y-4">
-                    <ul className="space-y-4">
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-gray-900 text-sm">What's included:</h4>
+                    <ul className="space-y-2">
                       {plan.features.map((feature, featureIndex) => (
                         <li key={featureIndex} className="flex items-start">
-                          <svg 
-                            className="h-5 w-5 text-gray-600 mr-4 mt-1 flex-shrink-0" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                          >
-                            <path 
-                              strokeLinecap="round" 
-                              strokeLinejoin="round" 
-                              strokeWidth="1.5" 
-                              d="M5 13l4 4L19 7"
-                            />
+                          <svg className="h-4 w-4 text-green-500 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                           </svg>
-                          <span className="text-gray-700 font-light">{feature}</span>
+                          <span className="text-sm text-gray-600">{feature}</span>
                         </li>
                       ))}
                     </ul>
@@ -304,18 +389,18 @@ export default function ModernLayout({ brandSettings, onPaymentClick }: { brandS
         </section>
       )}
 
-      {/* About Section - Simple */}
-      <section id="about" className="py-32 px-6 lg:px-8 bg-brand-accent-subtle">
+      {/* Modern About Section with Brand Colors */}
+      <section id="about" className="py-24 px-8 brand-accent-bg">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-5xl font-extralight mb-8">
-            About <span className="modern-gradient-text">{brandName}</span>
+          <h2 className="text-3xl md:text-4xl font-light brand-gradient-text mb-8">
+            About {brandName}
           </h2>
-          <p className="text-xl font-light text-gray-600 leading-relaxed mb-8 bg-white/50 p-8 rounded-xl backdrop-blur-sm">
+          <p className="text-gray-600 mb-8 max-w-2xl mx-auto leading-relaxed">
             We're revolutionizing healthcare through AI-powered analysis. Our advanced technology helps individuals 
             understand their health better by providing instant, accurate insights from medical reports.
           </p>
-          <p className="text-xl font-light text-gray-600 leading-relaxed mb-12 bg-white/50 p-8 rounded-xl backdrop-blur-sm">
-            With <span className="text-brand-primary font-medium">{brandName}</span>, you can take control of your health journey with confidence and clarity.
+          <p className="text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
+            With {brandName}, you can take control of your health journey with confidence and clarity.
           </p>
           <button 
             onClick={() => {
@@ -325,53 +410,69 @@ export default function ModernLayout({ brandSettings, onPaymentClick }: { brandS
                 document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
               }
             }}
-            className="bg-brand-primary text-white px-12 py-4 text-lg font-light hover:bg-brand-secondary transition-colors"
+            className="brand-button px-8 py-3 rounded-lg font-medium transition-all duration-300"
           >
             Start Your Analysis
           </button>
         </div>
       </section>
 
+      {/* Modern CTA Section with Brand Colors */}
+      <section className="py-24 px-8 brand-gradient">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-light text-white mb-6">
+            Ready to Get Started?
+          </h2>
+          <p className="text-white/90 mb-8 max-w-2xl mx-auto">
+            Join thousands of users who trust {brandName} for their health analysis needs.
+          </p>
+          <button 
+            onClick={() => {
+              if (pricingSection.enabled) {
+                document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
+              } else {
+                document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
+            className="bg-white text-brand-primary px-8 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+          >
+            Upload Your Report Now
+          </button>
+        </div>
+      </section>
+
       {/* Minimal Footer */}
-      <footer className="bg-brand-primary-subtle border-t border-brand-primary/10 py-20">
-        <div className="max-w-6xl mx-auto px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-12">
-            <div className="md:col-span-2">
-              <div className="flex items-center mb-6">
+      <footer className="bg-white border-t border-gray-100 py-16 px-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div>
+              <div className="flex items-center mb-4">
                 {logoUrl ? (
                   <img src={logoUrl} alt={brandName} className="h-8 w-8 mr-3 rounded-lg" />
                 ) : (
-                  <div className="h-8 w-8 mr-3 rounded-lg text-brand-primary font-bold text-sm flex items-center justify-center bg-white border border-brand-primary-subtle">
-                    {brandName.substring(0, 2).toUpperCase()}
+                  <div className="h-8 w-8 mr-3 rounded-lg bg-gray-100 flex items-center justify-center">
+                    <span className="text-sm font-medium text-gray-600">{brandName.substring(0, 2).toUpperCase()}</span>
                   </div>
                 )}
-                <span className="text-xl font-light modern-gradient-text">{brandName}</span>
+                <span className="text-lg font-medium brand-gradient-text">{brandName}</span>
               </div>
-              <p className="text-gray-600 font-light bg-white/50 p-4 rounded-lg backdrop-blur-sm">
+              <p className="text-gray-600 text-sm">
                 AI-powered health analysis for everyone.
               </p>
             </div>
             
-            <div className="bg-white/50 p-6 rounded-lg backdrop-blur-sm">
-              <h4 className="font-light modern-gradient-text mb-6">Contact</h4>
-              <div className="space-y-3 text-gray-600 font-light">
-                <p>info@{brandName.toLowerCase().replace(/\s+/g, '')}.com</p>
-                <p>+1 (555) 123-4567</p>
+            <div>
+              <h4 className="font-medium text-gray-900 mb-4">Contact</h4>
+              <div className="space-y-2 text-sm text-gray-600">
+                <p>{contactInfo?.email || `info@${brandName.toLowerCase().replace(/\s+/g, '')}.com`}</p>
+                <p>{contactInfo?.phone || '+1 (555) 123-4567'}</p>
               </div>
-            </div>
-            
-            <div className="bg-white/50 p-6 rounded-lg backdrop-blur-sm">
-              <h4 className="font-light modern-gradient-text mb-6">Legal</h4>
-              <ul className="space-y-3 text-gray-600 font-light">
-                <li><a href="#" className="hover:text-brand-primary transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-brand-primary transition-colors">Terms of Service</a></li>
-              </ul>
             </div>
           </div>
           
-          <div className="border-t border-brand-primary/10 mt-16 pt-8 text-center text-gray-600 font-light bg-white/30 rounded-lg backdrop-blur-sm">
-            <p>&copy; 2024 <span className="text-brand-primary">{brandName}</span>. All rights reserved.</p>
-          </div>
+                              <div className="border-t border-gray-100 mt-8 pt-8 text-center text-sm text-gray-500">
+                      <p>&copy; {new Date().getFullYear()} {brandName}. All rights reserved.</p>
+                    </div>
         </div>
       </footer>
     </div>

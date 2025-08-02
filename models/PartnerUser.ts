@@ -20,6 +20,9 @@ export interface IPartnerUser extends Document {
   secureLinksGenerated?: number;
   qrCodesCreated?: number;
   totalRevenue?: number;
+  passwordChangeOTP?: string;
+  passwordChangeOTPExpiry?: Date;
+  twoFactorAuth: boolean;
 }
 
 const PartnerUserSchema: Schema = new Schema(
@@ -43,6 +46,9 @@ const PartnerUserSchema: Schema = new Schema(
     secureLinksGenerated: { type: Number, default: 0 },
     qrCodesCreated: { type: Number, default: 0 },
     totalRevenue: { type: Number, default: 0 },
+    passwordChangeOTP: { type: String },
+    passwordChangeOTPExpiry: { type: Date },
+    twoFactorAuth: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

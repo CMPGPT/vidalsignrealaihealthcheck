@@ -56,34 +56,64 @@ export async function PUT(request: NextRequest) {
 
     console.log('✅ UPDATE PROFILE: Partner user found:', partnerUser._id);
 
-    // Update fields that are provided
+    // Update fields that are provided - ENCRYPT SENSITIVE DATA
     const updateData: any = {};
     
+    // Encrypt Stripe credentials
     if (body.stripePublishableKey !== undefined) {
-      updateData.stripePublishableKey = body.stripePublishableKey;
+      updateData.stripePublishableKey = body.stripePublishableKey ? doubleEncrypt(body.stripePublishableKey) : '';
     }
     
     if (body.stripeSecretKey !== undefined) {
-      updateData.stripeSecretKey = body.stripeSecretKey;
+      updateData.stripeSecretKey = body.stripeSecretKey ? doubleEncrypt(body.stripeSecretKey) : '';
     }
     
     if (body.stripeWebhookSecret !== undefined) {
-      updateData.stripeWebhookSecret = body.stripeWebhookSecret;
+      updateData.stripeWebhookSecret = body.stripeWebhookSecret ? doubleEncrypt(body.stripeWebhookSecret) : '';
     }
 
-    // Update other profile fields if provided
-    if (body.firstName !== undefined) updateData.first_Name = body.firstName;
-    if (body.lastName !== undefined) updateData.last_Name = body.lastName;
-    if (body.phone !== undefined) updateData.phone = body.phone;
-    if (body.website !== undefined) updateData.website_link = body.website;
-    if (body.organizationName !== undefined) updateData.organization_name = body.organizationName;
-    if (body.businessAddress !== undefined) updateData.business_address = body.businessAddress;
-    if (body.city !== undefined) updateData.city = body.city;
-    if (body.state !== undefined) updateData.state = body.state;
-    if (body.zip !== undefined) updateData.zip = body.zip;
-    if (body.businessType !== undefined) updateData.business_type = body.businessType;
+    // Encrypt sensitive profile fields
+    if (body.firstName !== undefined) {
+      updateData.first_Name = body.firstName ? doubleEncrypt(body.firstName) : '';
+    }
+    
+    if (body.lastName !== undefined) {
+      updateData.last_Name = body.lastName ? doubleEncrypt(body.lastName) : '';
+    }
+    
+    if (body.phone !== undefined) {
+      updateData.phone = body.phone ? doubleEncrypt(body.phone) : '';
+    }
+    
+    if (body.website !== undefined) {
+      updateData.website_link = body.website ? doubleEncrypt(body.website) : '';
+    }
+    
+    if (body.organizationName !== undefined) {
+      updateData.organization_name = body.organizationName ? doubleEncrypt(body.organizationName) : '';
+    }
+    
+    if (body.businessAddress !== undefined) {
+      updateData.business_address = body.businessAddress ? doubleEncrypt(body.businessAddress) : '';
+    }
+    
+    if (body.city !== undefined) {
+      updateData.city = body.city ? doubleEncrypt(body.city) : '';
+    }
+    
+    if (body.state !== undefined) {
+      updateData.state = body.state ? doubleEncrypt(body.state) : '';
+    }
+    
+    if (body.zip !== undefined) {
+      updateData.zip = body.zip ? doubleEncrypt(body.zip) : '';
+    }
+    
+    if (body.businessType !== undefined) {
+      updateData.business_type = body.businessType ? doubleEncrypt(body.businessType) : '';
+    }
 
-    console.log('🔍 UPDATE PROFILE: Updating with data:', updateData);
+    console.log('🔍 UPDATE PROFILE: Updating with encrypted data');
 
     // Update the partner user
     const updatedPartner = await PartnerUser.findByIdAndUpdate(
@@ -99,25 +129,28 @@ export async function PUT(request: NextRequest) {
 
     console.log('✅ UPDATE PROFILE: Successfully updated partner user');
 
+    // Return decrypted data for the frontend
+    const decryptedData = {
+      firstName: body.firstName || '',
+      lastName: body.lastName || '',
+      email: token.email,
+      phone: body.phone || '',
+      website: body.website || '',
+      organizationName: body.organizationName || '',
+      businessAddress: body.businessAddress || '',
+      city: body.city || '',
+      state: body.state || '',
+      zip: body.zip || '',
+      businessType: body.businessType || '',
+      stripePublishableKey: body.stripePublishableKey || '',
+      stripeSecretKey: body.stripeSecretKey || '',
+      stripeWebhookSecret: body.stripeWebhookSecret || '',
+    };
+
     return NextResponse.json({ 
       success: true,
       message: 'Profile updated successfully',
-      partner: {
-        firstName: updatedPartner.first_Name,
-        lastName: updatedPartner.last_Name,
-        email: updatedPartner.email,
-        phone: updatedPartner.phone,
-        website: updatedPartner.website_link,
-        organizationName: updatedPartner.organization_name,
-        businessAddress: updatedPartner.business_address,
-        city: updatedPartner.city,
-        state: updatedPartner.state,
-        zip: updatedPartner.zip,
-        businessType: updatedPartner.business_type,
-        stripePublishableKey: updatedPartner.stripePublishableKey,
-        stripeSecretKey: updatedPartner.stripeSecretKey,
-        stripeWebhookSecret: updatedPartner.stripeWebhookSecret,
-      }
+      partner: decryptedData
     });
 
   } catch (error) {

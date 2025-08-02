@@ -4,6 +4,7 @@ import dbConnect from '@/lib/dbConnect';
 import BrandSettings from '@/models/BrandSettings';
 import PartnerUser from '@/models/PartnerUser';
 import { SecureLink } from '@/models/SecureLink';
+import { doubleDecrypt } from '@/lib/encryption';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-06-30.basil',
@@ -67,6 +68,28 @@ export async function POST(request: NextRequest) {
     }
     console.log('✅ CHECKOUT: Partner user found:', partnerUser.email);
 
+    // Decrypt Stripe credentials
+    let decryptedStripeSecretKey = '';
+    let decryptedStripePublishableKey = '';
+    
+    try {
+      if (partnerUser.stripeSecretKey) {
+        decryptedStripeSecretKey = doubleDecrypt(partnerUser.stripeSecretKey);
+        console.log('✅ CHECKOUT: Stripe secret key decrypted successfully');
+      }
+    } catch (e) {
+      console.log('❌ CHECKOUT: Failed to decrypt Stripe secret key:', e);
+    }
+    
+    try {
+      if (partnerUser.stripePublishableKey) {
+        decryptedStripePublishableKey = doubleDecrypt(partnerUser.stripePublishableKey);
+        console.log('✅ CHECKOUT: Stripe publishable key decrypted successfully');
+      }
+    } catch (e) {
+      console.log('❌ CHECKOUT: Failed to decrypt Stripe publishable key:', e);
+    }
+
     // Extract quantity number from string like "10 QR Codes"
     const quantityNumber = parseInt(quantity?.match(/\d+/)?.[0] || '1');
 
@@ -84,19 +107,21 @@ export async function POST(request: NextRequest) {
       console.log('❌ CHECKOUT: Not enough secure links available');
       console.log('❌ CHECKOUT: Available:', availableSecureLinks, 'Requested:', quantityNumber);
       return NextResponse.json({ 
-        error: `Sorry, only ${availableSecureLinks} QR codes are currently available. Please try a smaller quantity or contact the seller.` 
+        error: 'Encountering error please try again later' 
       }, { status: 400 });
     }
 
     console.log('✅ CHECKOUT: Sufficient secure links available');
 
-    // Check if partner has Stripe credentials
-    if (!partnerUser.stripePublishableKey || !partnerUser.stripeSecretKey) {
+    // Check if partner has Stripe credentials (using decrypted values)
+    if (!decryptedStripePublishableKey || !decryptedStripeSecretKey) {
       console.log('❌ CHECKOUT: Partner missing Stripe credentials');
       console.log('🔍 CHECKOUT: Partner user:', {
         id: partnerUser._id,
         hasPublishableKey: !!partnerUser.stripePublishableKey,
-        hasSecretKey: !!partnerUser.stripeSecretKey
+        hasSecretKey: !!partnerUser.stripeSecretKey,
+        decryptedPublishableKey: !!decryptedStripePublishableKey,
+        decryptedSecretKey: !!decryptedStripeSecretKey
       });
 
       // If the request is from the website, do NOT fall back to the global Stripe key
@@ -145,8 +170,8 @@ export async function POST(request: NextRequest) {
           },
         ],
         mode: 'payment',
-        success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-success?session_id={CHECKOUT_SESSION_ID}&brand=${encodeURIComponent(brandName)}&email=${encodeURIComponent(email)}&plan=${encodeURIComponent(plan)}&quantity=${encodeURIComponent(quantity)}`,
-        cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-cancel?brand=${encodeURIComponent(brandName)}`,
+        success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-success?session_id={CHECKOUT_SESSION_ID}&brand=${encodeURIComponent(brandSettings.userId)}&email=${encodeURIComponent(email)}&plan=${encodeURIComponent(plan)}&quantity=${encodeURIComponent(quantity)}`,
+        cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-cancel?brand=${encodeURIComponent(brandSettings.userId)}`,
         customer_email: email,
         metadata: {
           brandName,
@@ -165,7 +190,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create Stripe checkout session using partner's credentials
-    const partnerStripe = new Stripe(partnerUser.stripeSecretKey, {
+    const partnerStripe = new Stripe(decryptedStripeSecretKey, {
       apiVersion: '2025-06-30.basil',
     });
 
@@ -204,8 +229,8 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: 'payment',
-              success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-success?session_id={CHECKOUT_SESSION_ID}&brand=${encodeURIComponent(brandName)}&email=${encodeURIComponent(email)}&plan=${encodeURIComponent(plan)}&quantity=${encodeURIComponent(quantity)}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-cancel?brand=${encodeURIComponent(brandName)}`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-success?session_id={CHECKOUT_SESSION_ID}&brand=${encodeURIComponent(brandSettings.userId)}&email=${encodeURIComponent(email)}&plan=${encodeURIComponent(plan)}&quantity=${encodeURIComponent(quantity)}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-cancel?brand=${encodeURIComponent(brandSettings.userId)}`,
       customer_email: email,
       metadata: {
         brandName,

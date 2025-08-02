@@ -67,81 +67,92 @@ export async function GET(req: NextRequest) {
       state: '',
       zip: '',
       businessType: '',
-      stripePublishableKey: user.stripePublishableKey || '',
-      stripeSecretKey: user.stripeSecretKey || '',
-      stripeWebhookSecret: user.stripeWebhookSecret || ''
+      stripePublishableKey: '',
+      stripeSecretKey: '',
+      stripeWebhookSecret: ''
     };
 
-    // Decrypt fields
+    // Decrypt all sensitive fields
     try {
-      profileData.firstName = doubleDecrypt(user.first_Name);
-      profileData.lastName = doubleDecrypt(user.last_Name);
+      profileData.firstName = user.first_Name ? doubleDecrypt(user.first_Name) : '';
     } catch (e) {
-      profileData.firstName = user.first_Name;
-      profileData.lastName = user.last_Name;
+      profileData.firstName = user.first_Name || '';
     }
 
     try {
-      profileData.organizationName = doubleDecrypt(user.organization_name);
+      profileData.lastName = user.last_Name ? doubleDecrypt(user.last_Name) : '';
     } catch (e) {
-      profileData.organizationName = user.organization_name;
+      profileData.lastName = user.last_Name || '';
     }
 
     try {
-      profileData.state = doubleDecrypt(user.state);
+      profileData.phone = user.phone ? doubleDecrypt(user.phone) : '';
     } catch (e) {
-      profileData.state = user.state;
+      profileData.phone = user.phone || '';
     }
 
-    if (user.phone) {
-      try {
-        profileData.phone = doubleDecrypt(user.phone);
-      } catch (e) {
-        profileData.phone = user.phone;
-      }
+    try {
+      profileData.website = user.website_link ? doubleDecrypt(user.website_link) : '';
+    } catch (e) {
+      profileData.website = user.website_link || '';
     }
 
-    if (user.website_link) {
-      try {
-        profileData.website = doubleDecrypt(user.website_link);
-      } catch (e) {
-        profileData.website = user.website_link;
-      }
+    try {
+      profileData.organizationName = user.organization_name ? doubleDecrypt(user.organization_name) : '';
+    } catch (e) {
+      profileData.organizationName = user.organization_name || '';
     }
 
-    if (user.business_address) {
-      try {
-        profileData.businessAddress = doubleDecrypt(user.business_address);
-      } catch (e) {
-        profileData.businessAddress = user.business_address;
-      }
+    try {
+      profileData.businessAddress = user.business_address ? doubleDecrypt(user.business_address) : '';
+    } catch (e) {
+      profileData.businessAddress = user.business_address || '';
     }
 
-    if (user.city) {
-      try {
-        profileData.city = doubleDecrypt(user.city);
-      } catch (e) {
-        profileData.city = user.city;
-      }
+    try {
+      profileData.city = user.city ? doubleDecrypt(user.city) : '';
+    } catch (e) {
+      profileData.city = user.city || '';
     }
 
-    if (user.zip) {
-      try {
-        profileData.zip = doubleDecrypt(user.zip);
-      } catch (e) {
-        profileData.zip = user.zip;
-      }
+    try {
+      profileData.state = user.state ? doubleDecrypt(user.state) : '';
+    } catch (e) {
+      profileData.state = user.state || '';
     }
 
-    if (user.business_type) {
-      try {
-        profileData.businessType = doubleDecrypt(user.business_type);
-      } catch (e) {
-        profileData.businessType = user.business_type;
-      }
+    try {
+      profileData.zip = user.zip ? doubleDecrypt(user.zip) : '';
+    } catch (e) {
+      profileData.zip = user.zip || '';
     }
 
-    console.log('✅ GET PROFILE: Profile data prepared');
+    try {
+      profileData.businessType = user.business_type ? doubleDecrypt(user.business_type) : '';
+    } catch (e) {
+      profileData.businessType = user.business_type || '';
+    }
+
+    // Decrypt Stripe credentials
+    try {
+      profileData.stripePublishableKey = user.stripePublishableKey ? doubleDecrypt(user.stripePublishableKey) : '';
+    } catch (e) {
+      profileData.stripePublishableKey = user.stripePublishableKey || '';
+    }
+
+    try {
+      profileData.stripeSecretKey = user.stripeSecretKey ? doubleDecrypt(user.stripeSecretKey) : '';
+    } catch (e) {
+      profileData.stripeSecretKey = user.stripeSecretKey || '';
+    }
+
+    try {
+      profileData.stripeWebhookSecret = user.stripeWebhookSecret ? doubleDecrypt(user.stripeWebhookSecret) : '';
+    } catch (e) {
+      profileData.stripeWebhookSecret = user.stripeWebhookSecret || '';
+    }
+
+    console.log('✅ GET PROFILE: Profile data decrypted successfully');
 
     return NextResponse.json({ 
       success: true,

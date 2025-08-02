@@ -7,6 +7,14 @@ import Link from "next/link";
 import { redirect, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { signOut } from "next-auth/react";
+import { Montserrat } from 'next/font/google';
+
+// Load Montserrat font
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-montserrat',
+});
 
 export default function PartnerLayout({
   children,
@@ -14,6 +22,16 @@ export default function PartnerLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+
+  // Add CSS for Montserrat font
+  const montserratStyles = `
+    .font-montserrat {
+      font-family: 'Montserrat', sans-serif;
+    }
+    .font-montserrat * {
+      font-family: 'Montserrat', sans-serif;
+    }
+  `;
 
   const tabs = [
     { name: "Overview", href: "/partners", icon: Home },
@@ -25,7 +43,8 @@ export default function PartnerLayout({
 
   return (
     <Layout hideNavbar hideFooter className="bg-background">
-      <div className="min-h-screen relative">
+      <style dangerouslySetInnerHTML={{ __html: montserratStyles }} />
+      <div className={`min-h-screen relative font-montserrat ${montserrat.className}`}>
         {/* Header with tabs and logout */}
         <header className="border-b border-border pb-2">
           <div className="container mx-auto px-4 py-4 flex flex-col">
