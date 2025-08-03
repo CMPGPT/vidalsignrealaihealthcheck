@@ -108,8 +108,15 @@ export async function authorizeUser(credentials: any) {
       throw new Error("Invalid email or password");
     }
 
+    // Check if user is verified
+    console.log('🔍 AUTH DEBUG: Step 5 - Checking verification status');
+    if (!user.verified) {
+      console.log('❌ AUTH DEBUG: USER NOT VERIFIED');
+      throw new Error("Please verify your email address before logging in. Check your inbox for the verification link.");
+    }
+
     // Get user name (handle both encrypted and non-encrypted names)
-    console.log('🔍 AUTH DEBUG: Step 5 - Getting user names');
+    console.log('🔍 AUTH DEBUG: Step 6 - Getting user names');
     let firstName = user.first_Name;
     let lastName = user.last_Name;
     

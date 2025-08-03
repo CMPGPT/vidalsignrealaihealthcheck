@@ -128,14 +128,78 @@ export default function Signup() {
 
       if (!res.ok) throw new Error(data.message || 'Signup failed');
 
-      Swal.fire({
-        title: 'Signup Successful!',
-        text: 'Your account has been created successfully. Please log in to access your dashboard.',
-        icon: 'success',
-        confirmButtonText: 'Go to Login',
-      }).then(() => {
-        router.push('/login');
-      });
+      if (data.requiresVerification) {
+        Swal.fire({
+          title: 'Account Created Successfully! 🎉',
+          html: `
+            <div style="text-align: left;">
+              <p style="margin-bottom: 15px; font-size: 16px;">
+                Your VidalSigns account has been created successfully!
+              </p>
+              <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                <h4 style="color: #0c4a6e; margin: 0 0 10px 0; font-size: 14px;">📧 Verification Required</h4>
+                <p style="color: #0369a1; margin: 0; font-size: 14px; line-height: 1.5;">
+                  We've sent a verification link to your email address. Please check your inbox and click the verification link to activate your account.
+                </p>
+              </div>
+              <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 15px; margin: 15px 0;">
+                <h4 style="color: #92400e; margin: 0 0 10px 0; font-size: 14px;">⚠️ Important</h4>
+                <ul style="color: #b45309; margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.5;">
+                  <li>You cannot access your account until verified</li>
+                  <li>Check your spam folder if you don't see the email</li>
+                  <li>The verification link expires in 24 hours</li>
+                </ul>
+              </div>
+            </div>
+          `,
+          icon: 'success',
+          confirmButtonText: 'Check My Email',
+          showCancelButton: true,
+          cancelButtonText: 'Go to Login',
+          confirmButtonColor: '#667eea',
+          cancelButtonColor: '#6b7280',
+        }).then((result) => {
+          if (result.isConfirmed) {
+            // Open email client or show instructions
+            Swal.fire({
+              title: 'Email Instructions',
+              html: `
+                <div style="text-align: left;">
+                  <p style="margin-bottom: 15px; font-size: 16px;">
+                    To verify your account:
+                  </p>
+                  <ol style="text-align: left; padding-left: 20px; font-size: 14px; line-height: 1.6;">
+                    <li>Check your email inbox</li>
+                    <li>Look for an email from "VidalSigns"</li>
+                    <li>Click the "Verify Email Address" button</li>
+                    <li>Or copy the verification link and paste it in your browser</li>
+                  </ol>
+                  <div style="background: #f0f9ff; border-radius: 8px; padding: 15px; margin-top: 15px;">
+                    <p style="color: #0369a1; margin: 0; font-size: 14px;">
+                      <strong>Didn't receive the email?</strong><br>
+                      Check your spam folder or contact support at textgpt.team@gmail.com
+                    </p>
+                  </div>
+                </div>
+              `,
+              icon: 'info',
+              confirmButtonText: 'Got It',
+              confirmButtonColor: '#667eea',
+            });
+          } else {
+            router.push('/login');
+          }
+        });
+      } else {
+        Swal.fire({
+          title: 'Signup Successful!',
+          text: 'Your account has been created successfully. Please log in to access your dashboard.',
+          icon: 'success',
+          confirmButtonText: 'Go to Login',
+        }).then(() => {
+          router.push('/login');
+        });
+      }
     } catch (err) {
       Swal.fire({
         title: 'Error!',

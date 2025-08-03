@@ -8,6 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 import { 
   Table,
   TableBody,
@@ -16,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CreditCard, FileText, Building, Globe, Loader2, Upload, Palette, Rocket, ExternalLink, Image, TrendingUp, Users, DollarSign, RefreshCw } from "lucide-react";
+import { CreditCard, FileText, Building, Globe, Loader2, Upload, Palette, Rocket, ExternalLink, Image, TrendingUp, Users, DollarSign, RefreshCw, Eye, EyeOff } from "lucide-react";
 import { useSession } from 'next-auth/react';
 import { toast } from "sonner";
 import { useUploadThing } from "@/lib/uploadthing-hooks";
@@ -47,6 +53,10 @@ interface PasswordChangeData {
   newPassword: string;
   confirmPassword: string;
   otp: string;
+}
+
+interface PasswordChangeStep {
+  step: 'password' | 'otp' | 'success';
 }
 
 interface BrandSettings {
@@ -124,6 +134,12 @@ export default function SettingsPage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isSendingOTP, setIsSendingOTP] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordChangeStep, setPasswordChangeStep] = useState<PasswordChangeStep>({ step: 'password' });
+  const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong'>('weak');
+  const [showPasswordGenerator, setShowPasswordGenerator] = useState(false);
   const [brandSettings, setBrandSettings] = useState<BrandSettings>({
     brandName: '',
     logoUrl: '',
@@ -578,6 +594,48 @@ export default function SettingsPage() {
       return;
     }
 
+    // Check if current and new passwords are the same
+    if (passwordData.currentPassword === passwordData.newPassword) {
+      toast.error("New password must be different from your current password");
+      return;
+    }
+
+    if (!passwordData.currentPassword) {
+      toast.error("Please enter your current password");
+      return;
+    }
+    
+    setIsChangingPassword(true);
+    
+    try {
+      // First, send OTP
+      const otpResponse = await fetch('/api/send-password-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const otpData = await otpResponse.json();
+      
+      if (otpResponse.ok) {
+        toast.success("OTP sent to your email!");
+        setOtpSent(true);
+        setPasswordChangeStep({ step: 'otp' });
+      } else {
+        toast.error(otpData.error || "Failed to send OTP");
+      }
+    } catch (error) {
+      console.error('Error sending OTP:', error);
+      toast.error("Failed to send OTP");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleVerifyAndChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!passwordData.otp) {
       toast.error("Please enter the OTP sent to your email");
       return;
@@ -609,6 +667,12 @@ export default function SettingsPage() {
           otp: '',
         });
         setOtpSent(false);
+        setPasswordChangeStep({ step: 'success' });
+        
+        // Reset to password step after 3 seconds
+        setTimeout(() => {
+          setPasswordChangeStep({ step: 'password' });
+        }, 3000);
       } else {
         toast.error(data.error || "Failed to change password");
       }
@@ -620,37 +684,70 @@ export default function SettingsPage() {
     }
   };
 
-  // Send OTP for password change
-  const handleSendOTP = async () => {
-    if (!passwordData.currentPassword) {
-      toast.error("Please enter your current password first");
-      return;
-    }
-
-    setIsSendingOTP(true);
+  // Password strength checker
+  const checkPasswordStrength = (password: string): 'weak' | 'medium' | 'strong' => {
+    if (password.length < 6) return 'weak';
     
-    try {
-      const response = await fetch('/api/send-password-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        toast.success("OTP sent to your email!");
-        setOtpSent(true);
-      } else {
-        toast.error(data.error || "Failed to send OTP");
-      }
-    } catch (error) {
-      console.error('Error sending OTP:', error);
-      toast.error("Failed to send OTP");
-    } finally {
-      setIsSendingOTP(false);
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    
+    if (score <= 2) return 'weak';
+    if (score <= 3) return 'medium';
+    return 'strong';
+  };
+
+  // Generate strong password
+  const generateStrongPassword = () => {
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+    const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
+    
+    let password = '';
+    
+    // Ensure at least one of each type
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += symbols[Math.floor(Math.random() * symbols.length)];
+    
+    // Fill the rest randomly
+    const allChars = lowercase + uppercase + numbers + symbols;
+    for (let i = 4; i < 12; i++) {
+      password += allChars[Math.floor(Math.random() * allChars.length)];
     }
+    
+    // Shuffle the password
+    password = password.split('').sort(() => Math.random() - 0.5).join('');
+    
+    setPasswordData(prev => ({ ...prev, newPassword: password, confirmPassword: password }));
+    setPasswordStrength('strong');
+  };
+
+  // Password suggestions
+  const passwordSuggestions = [
+    'Use a mix of uppercase and lowercase letters',
+    'Include numbers and special characters',
+    'Make it at least 8 characters long',
+    'Avoid common words or patterns',
+    'Don\'t use personal information'
+  ];
+
+  // Reset password change step
+  const resetPasswordChange = () => {
+    setPasswordChangeStep({ step: 'password' });
+    setPasswordData({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+      otp: '',
+    });
+    setOtpSent(false);
+    setPasswordStrength('weak');
   };
 
   if (loading) {
@@ -1156,95 +1253,230 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <form onSubmit={handlePasswordChange}>
-                <div className="space-y-2">
-                  <Label htmlFor="current-password">Current Password</Label>
-                  <Input 
-                    id="current-password" 
-                    type="password" 
-                    value={passwordData.currentPassword}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                    placeholder="Enter your current password"
-                  />
-                </div>
-                
-                <Separator />
-                
-                <div className="space-y-2">
-                  <Label htmlFor="new-password">New Password</Label>
-                  <Input 
-                    id="new-password" 
-                    type="password" 
-                    value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
-                    placeholder="Enter your new password"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirm New Password</Label>
-                  <Input 
-                    id="confirm-password" 
-                    type="password" 
-                    value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                    placeholder="Confirm your new password"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="otp">Verification Code</Label>
-                  <div className="flex gap-2">
-                    <Input 
-                      id="otp" 
-                      type="text" 
-                      value={passwordData.otp}
-                      onChange={(e) => setPasswordData(prev => ({ ...prev, otp: e.target.value }))}
-                      placeholder="Enter 4-digit OTP"
-                      maxLength={4}
-                    />
-                    <Button 
-                      type="button"
-                      onClick={handleSendOTP} 
-                      disabled={isSendingOTP || !passwordData.currentPassword}
-                      variant="outline"
-                    >
-                      {isSendingOTP && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      {isSendingOTP ? 'Sending...' : 'Send OTP'}
+              {passwordChangeStep.step === 'password' && (
+                <form onSubmit={handlePasswordChange}>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="current-password">Current Password</Label>
+                      <div className="relative">
+                        <Input 
+                          id="current-password" 
+                          type={showCurrentPassword ? "text" : "password"}
+                          value={passwordData.currentPassword}
+                          onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+                          placeholder="Enter your current password"
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        >
+                          {showCurrentPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">New Password</Label>
+                      <div className="relative">
+                        <Input 
+                          id="new-password" 
+                          type={showNewPassword ? "text" : "password"}
+                          value={passwordData.newPassword}
+                          onChange={(e) => {
+                            setPasswordData(prev => ({ ...prev, newPassword: e.target.value }));
+                            setPasswordStrength(checkPasswordStrength(e.target.value));
+                          }}
+                          placeholder="Enter your new password"
+                          className="pr-20"
+                        />
+                        <div className="absolute right-0 top-0 h-full flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="px-2 hover:bg-transparent"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                          >
+                            {showNewPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="px-2 hover:bg-transparent"
+                            onClick={generateStrongPassword}
+                            title="Generate strong password"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {/* Password Strength Indicator */}
+                      {passwordData.newPassword && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className="flex gap-1">
+                              <div className={`h-2 w-8 rounded-full ${
+                                passwordStrength === 'weak' ? 'bg-red-500' : 
+                                passwordStrength === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
+                              }`} />
+                              <div className={`h-2 w-8 rounded-full ${
+                                passwordStrength === 'weak' ? 'bg-gray-300' : 
+                                passwordStrength === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
+                              }`} />
+                              <div className={`h-2 w-8 rounded-full ${
+                                passwordStrength === 'weak' ? 'bg-gray-300' : 
+                                passwordStrength === 'medium' ? 'bg-gray-300' : 'bg-green-500'
+                              }`} />
+                            </div>
+                            <span className={`text-xs font-medium ${
+                              passwordStrength === 'weak' ? 'text-red-600' : 
+                              passwordStrength === 'medium' ? 'text-yellow-600' : 'text-green-600'
+                            }`}>
+                              {passwordStrength === 'weak' ? 'Weak' : 
+                               passwordStrength === 'medium' ? 'Medium' : 'Strong'}
+                            </span>
+                          </div>
+                          
+                          {/* Password Suggestions */}
+                          {passwordStrength !== 'strong' && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                              <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Password Tips:</h4>
+                              <ul className="text-xs text-blue-700 space-y-1">
+                                {passwordSuggestions.map((tip, index) => (
+                                  <li key={index} className="flex items-start gap-2">
+                                    <span className="text-blue-500 mt-0.5">•</span>
+                                    {tip}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">Confirm New Password</Label>
+                      <div className="relative">
+                        <Input 
+                          id="confirm-password" 
+                          type={showConfirmPassword ? "text" : "password"}
+                          value={passwordData.confirmPassword}
+                          onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                          placeholder="Confirm your new password"
+                          className="pr-10"
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        >
+                          {showConfirmPassword ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Eye className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <Button type="submit" disabled={isChangingPassword} className="w-full">
+                      {isChangingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {isChangingPassword ? 'Sending OTP...' : 'Update Password'}
                     </Button>
                   </div>
-                  {otpSent && (
-                    <p className="text-sm text-green-600">
-                      ✓ OTP sent to your email. Check your inbox.
-                    </p>
-                  )}
+                </form>
+              )}
+
+              {passwordChangeStep.step === 'otp' && (
+                <form onSubmit={handleVerifyAndChangePassword}>
+                  <div className="space-y-4">
+                    <div className="text-center space-y-2">
+                      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span className="text-2xl">📧</span>
+                      </div>
+                      <h3 className="text-lg font-semibold">Enter Verification Code</h3>
+                      <p className="text-sm text-muted-foreground">
+                        We've sent a 4-digit code to your email address
+                      </p>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="otp">Verification Code</Label>
+                      <div className="flex justify-center">
+                        <InputOTP
+                          value={passwordData.otp}
+                          onChange={(value) => setPasswordData(prev => ({ ...prev, otp: value }))}
+                          maxLength={4}
+                        >
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSeparator />
+                            <InputOTPSlot index={2} />
+                            <InputOTPSlot index={3} />
+                          </InputOTPGroup>
+                        </InputOTP>
+                      </div>
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <Button 
+                        type="button"
+                        variant="outline" 
+                        onClick={resetPasswordChange}
+                        className="flex-1"
+                      >
+                        Back
+                      </Button>
+                      <Button 
+                        type="submit" 
+                        disabled={isChangingPassword || !passwordData.otp}
+                        className="flex-1"
+                      >
+                        {isChangingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isChangingPassword ? 'Verifying...' : 'Verify & Change Password'}
+                      </Button>
+                    </div>
+                  </div>
+                </form>
+              )}
+
+              {passwordChangeStep.step === 'success' && (
+                <div className="text-center space-y-4">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                    <span className="text-2xl">✅</span>
+                  </div>
+                  <h3 className="text-lg font-semibold text-green-600">Password Updated Successfully!</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Your password has been changed. You can now use your new password to log in.
+                  </p>
+                  <Button 
+                    onClick={resetPasswordChange}
+                    variant="outline"
+                  >
+                    Change Password Again
+                  </Button>
                 </div>
-                
-                <Button type="submit" disabled={isChangingPassword || !otpSent}>
-                  {isChangingPassword && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isChangingPassword ? 'Changing Password...' : 'Update Password'}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader>
-              <CardTitle>Two-Factor Authentication</CardTitle>
-              <CardDescription>
-                Add an extra layer of security to your account.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Two-Factor Authentication</p>
-                  <p className="text-sm text-muted-foreground">Enable two-factor authentication for enhanced security.</p>
-                </div>
-                <Switch />
-              </div>
-              
-              <Button variant="outline">Setup Two-Factor Authentication</Button>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

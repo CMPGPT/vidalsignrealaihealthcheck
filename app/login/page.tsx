@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AuthCarousel from '@/components/auth/AuthCarousel';
 import { Button } from '@/components/ui/button';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle, AlertCircle } from 'lucide-react';
 import { signIn, getSession } from 'next-auth/react';
 import { Poppins, Raleway } from 'next/font/google';
 
@@ -22,6 +22,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -43,18 +44,21 @@ export default function Login() {
     if (!email.trim()) {
       console.log('❌ LOGIN DEBUG: Email is empty');
       setError('Please enter your email address');
+      setSuccess('');
       return;
     }
 
     if (!password.trim()) {
       console.log('❌ LOGIN DEBUG: Password is empty');
       setError('Please enter your password');
+      setSuccess('');
       return;
     }
 
     console.log('✅ LOGIN DEBUG: Validation passed');
     setLoading(true);
     setError('');
+    setSuccess('');
 
     try {
       console.log('🔍 LOGIN DEBUG: Email:', email);
@@ -77,31 +81,33 @@ export default function Login() {
         console.log('✅ LOGIN DEBUG: Login successful! Redirecting to /partners');
         
         // Show success message
-        setError('Login successful! Redirecting...');
+        setSuccess('Login successful! Redirecting...');
         
         // Force session update before redirect
         await getSession();
         setTimeout(() => {
           window.location.href = '/partners';
         }, 500);
-      } else {
-        console.log('❌ LOGIN DEBUG: Login failed');
-        console.log('❌ LOGIN DEBUG: Error details:', result?.error);
-        
-        let errorMessage = 'Login failed. ';
-        if (result?.error === 'CredentialsSignin') {
-          errorMessage += 'Invalid email or password.';
-        } else if (result?.error) {
-          errorMessage += `Error: ${result.error}`;
-        } else {
-          errorMessage += 'Please check your credentials and try again.';
+              } else {
+          console.log('❌ LOGIN DEBUG: Login failed');
+          console.log('❌ LOGIN DEBUG: Error details:', result?.error);
+          
+          let errorMessage = 'Login failed. ';
+          if (result?.error === 'CredentialsSignin') {
+            errorMessage += 'Invalid email or password.';
+          } else if (result?.error) {
+            errorMessage += `Error: ${result.error}`;
+          } else {
+            errorMessage += 'Please check your credentials and try again.';
+          }
+          
+          setError(errorMessage);
+          setSuccess('');
         }
-        
-        setError(errorMessage);
-      }
     } catch (error) {
       console.error('❌ LOGIN DEBUG: Exception during login:', error);
       setError('An unexpected error occurred. Please try again.');
+      setSuccess('');
     } finally {
       console.log('🔍 LOGIN DEBUG: Setting loading to false');
       setLoading(false);
@@ -133,8 +139,16 @@ export default function Login() {
             }}
           >
             {error && (
-              <div className="p-3 bg-red-100 border border-red-200 text-red-600 rounded-md text-sm">
-                {error}
+              <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {success && (
+              <div className="p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg text-sm flex items-center gap-3">
+                <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
+                <span>{success}</span>
               </div>
             )}
 

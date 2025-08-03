@@ -367,3 +367,75 @@ export const sendPasswordOTPEmail = async (email: string, otp: string) => {
 
   return transporter.sendMail(mailOptions);
 };
+
+// Send account verification email
+export const sendVerificationEmail = async (email: string, verificationToken: string) => {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+  });
+
+  const verificationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify-email?token=${verificationToken}`;
+
+  const mailOptions = {
+    from: `"VidalSigns" <${process.env.GMAIL_USER}>`,
+    to: email,
+    subject: 'Verify Your VidalSigns Account',
+    html: `
+      <div style="font-family: 'Montserrat', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background: #667eea; padding: 20px;">
+        <div style="background: white; border-radius: 16px; padding: 30px; margin-bottom: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <div style="background: #667eea; color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+              <h1 style="margin: 0; font-size: 28px; font-weight: 600;">🔐 Verify Your Account</h1>
+              <p style="margin: 10px 0 0 0; font-size: 16px;">Welcome to VidalSigns! Please verify your email address</p>
+            </div>
+          </div>
+          
+          <div style="background: #f8f9fa; padding: 20px; border-radius: 12px; margin-bottom: 25px; border-left: 4px solid #667eea;">
+            <h2 style="color: #333; margin-top: 0; font-size: 20px; display: flex; align-items: center;">
+              <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 14px; margin-right: 12px;">📧</span>
+              Email Verification Required
+            </h2>
+            <p style="color: #666; font-size: 16px; line-height: 1.6;">
+              Thank you for creating your VidalSigns account! To complete your registration and access all features, please verify your email address by clicking the button below.
+            </p>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${verificationUrl}" style="display: inline-block; background: #667eea; color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px; margin: 10px;">
+              ✅ Verify Email Address
+            </a>
+          </div>
+          
+          <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; border-left: 4px solid #28a745;">
+            <h3 style="color: #28a745; margin-top: 0; font-size: 16px;">⚠️ Important Information</h3>
+            <ul style="color: #666; margin: 0; padding-left: 20px; font-size: 14px;">
+              <li>This verification link will expire in 24 hours</li>
+              <li>If you didn't create this account, please ignore this email</li>
+              <li>You won't be able to access your account until verified</li>
+              <li>For security, this link can only be used once</li>
+            </ul>
+          </div>
+        </div>
+        
+        <div style="background: white; border-radius: 16px; padding: 30px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
+          <div style="margin-bottom: 20px;">
+            <h3 style="color: #333; margin-bottom: 10px; font-size: 18px;">VidalSigns</h3>
+            <p style="color: #666; margin: 0; font-size: 14px;">AI-powered health analysis for everyone</p>
+          </div>
+          <div style="border-top: 1px solid #e0e0e0; padding-top: 20px;">
+            <p style="color: #666; margin: 0; font-size: 12px;">
+              This email was sent for account verification<br>
+              If you have any questions, contact support at textgpt.team@gmail.com
+            </p>
+          </div>
+        </div>
+      </div>
+    `,
+  };
+
+  return transporter.sendMail(mailOptions);
+};

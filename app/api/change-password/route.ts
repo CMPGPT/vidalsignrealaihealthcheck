@@ -26,9 +26,19 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    // Find the user by encrypted email
-    const user = await PartnerUser.findOne({ email: token.email });
+    // Find the user by email (token.email is already the plain email from session)
+    let user = await PartnerUser.findOne({ email: token.email });
     
+    if (!user) {
+      // If not found by plain email, try to find by encrypted email
+      try {
+        const encryptedEmail = doubleEncrypt(token.email);
+        user = await PartnerUser.findOne({ email: encryptedEmail });
+      } catch (error) {
+        console.error('Error with encrypted email lookup:', error);
+      }
+    }
+
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }

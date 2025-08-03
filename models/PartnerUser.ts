@@ -23,6 +23,9 @@ export interface IPartnerUser extends Document {
   passwordChangeOTP?: string;
   passwordChangeOTPExpiry?: Date;
   twoFactorAuth: boolean;
+  verified: boolean;
+  verificationToken?: string;
+  verificationTokenExpiry?: Date;
 }
 
 const PartnerUserSchema: Schema = new Schema(
@@ -49,6 +52,9 @@ const PartnerUserSchema: Schema = new Schema(
     passwordChangeOTP: { type: String },
     passwordChangeOTPExpiry: { type: Date },
     twoFactorAuth: { type: Boolean, default: false },
+    verified: { type: Boolean, default: false },
+    verificationToken: { type: String },
+    verificationTokenExpiry: { type: Date },
   },
   { timestamps: true }
 );
