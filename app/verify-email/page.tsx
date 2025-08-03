@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, CheckCircle, XCircle, Mail } from 'lucide-react';
 import Swal from 'sweetalert2';
 
-export default function VerifyEmail() {
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [verificationStatus, setVerificationStatus] = useState<'loading' | 'success' | 'error'>('loading');
@@ -171,5 +171,38 @@ export default function VerifyEmail() {
         </div>
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="max-w-md w-full mx-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="text-center">
+            <div className="mb-6">
+              <Link href="/" className="text-2xl font-bold text-primary hover:opacity-80 transition-opacity">
+                VidalSigns
+              </Link>
+            </div>
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900">Loading...</h2>
+              <p className="text-gray-600">Please wait while we load the verification page...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function VerifyEmail() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <VerifyEmailContent />
+    </Suspense>
   );
 } 

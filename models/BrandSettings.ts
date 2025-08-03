@@ -280,8 +280,7 @@ const BrandSettingsSchema: Schema = new Schema(
   }
 );
 
-// Index for efficient queries
-BrandSettingsSchema.index({ userId: 1 });
+// Note: userId already has unique: true in schema, so no need for explicit index
 
 // Helper method to generate partner website URL
 export const generatePartnerUrl = (brandName: string): string => {
