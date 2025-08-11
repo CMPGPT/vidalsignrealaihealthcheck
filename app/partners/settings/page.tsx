@@ -187,15 +187,15 @@ export default function SettingsPage() {
     pricingSection: {
       enabled: true,
       title: 'QR Codes & Secure Links',
-      subtitle: 'Purchase QR codes and secure links to share lab reports with your patients.',
+      subtitle: 'Purchase QR codes and secure links to share lab reports with your patients. Each plan includes 1 QR Code.',
       plans: [
         {
           name: 'Starter Pack',
           price: '$29',
-          quantity: '10 QR Codes',
+          quantity: '1 QR Code',
           description: 'Perfect for small practices',
           features: [
-            '10 QR Codes',
+            '1 QR Code',
             'Secure link generation',
             'Basic support',
             '24-hour expiry'

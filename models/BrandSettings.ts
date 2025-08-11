@@ -247,10 +247,10 @@ const BrandSettingsSchema: Schema = new Schema(
           {
             name: 'Starter Pack',
             price: '$29',
-            quantity: '10 QR Codes',
+            quantity: '1 QR Code',
             description: 'Perfect for small practices',
             features: [
-              '10 QR Codes',
+              '1 QR Code',
               'Secure link generation',
               'Basic support',
               '24-hour expiry'

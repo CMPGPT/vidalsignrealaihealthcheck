@@ -141,7 +141,7 @@ interface BrandSettings {
     plans: Array<{
       name: string;
       price: string;
-      quantity: string;
+      quantity: string; // Fixed at "1 QR Code" - not editable
       description: string;
       features: string[];
       popular: boolean;
@@ -206,15 +206,15 @@ const defaultSettings: BrandSettings = {
   pricingSection: {
     enabled: true,
     title: "QR Codes & Secure Links",
-    subtitle: "Purchase QR codes and secure links to share lab reports with your patients.",
+    subtitle: "Purchase QR codes and secure links to share lab reports with your patients. Each plan includes 1 QR Code.",
     plans: [
       {
         name: "Starter Pack",
         price: "$29",
-        quantity: "10 QR Codes",
+        quantity: "1 QR Code",
         description: "Perfect for small practices",
         features: [
-          "10 QR Codes",
+          "1 QR Code",
           "Secure link generation",
           "Basic support",
           "24-hour expiry"
@@ -316,6 +316,20 @@ export default function BrandingEditor({
     }
   }, [initialSettings.selectedTheme]);
 
+  // Ensure all pricing plans have quantity fixed at "1 QR Code"
+  useEffect(() => {
+    setSettings(prev => {
+      const newSettings = { ...prev };
+      if (newSettings.pricingSection?.plans) {
+        newSettings.pricingSection.plans.forEach((plan: any) => {
+          plan.quantity = "1 QR Code";
+        });
+        console.log('🔒 FRONTEND: Fixed quantity for all pricing plans to "1 QR Code"');
+      }
+      return newSettings;
+    });
+  }, []);
+
   const handleSettingsChange = (path: string, value: any) => {
     console.log('🔍 FRONTEND: handleSettingsChange called with path:', path, 'value:', value);
     setSettings(prev => {
@@ -345,6 +359,14 @@ export default function BrandingEditor({
         }
       }
       
+      // Special handling: Ensure all pricing plans have quantity fixed at "1 QR Code"
+      if (path.includes('pricingSection.plans')) {
+        newSettings.pricingSection.plans.forEach((plan: any) => {
+          plan.quantity = "1 QR Code";
+        });
+        console.log('🔒 FRONTEND: Fixed quantity for all pricing plans to "1 QR Code"');
+      }
+      
       console.log('🔍 FRONTEND: Updated settings after change:', JSON.stringify(newSettings, null, 2));
       return newSettings;
     });
@@ -359,9 +381,9 @@ export default function BrandingEditor({
     const newPlan = {
       name: "New Pack",
       price: "$49",
-      quantity: "25 QR Codes",
+      quantity: "1 QR Code",
       description: "Perfect for growing practices",
-      features: ["25 QR Codes", "Secure link generation", "Email support"],
+      features: ["1 QR Code", "Secure link generation", "Email support"],
       popular: false,
       buttonText: "Purchase Now"
     };
@@ -868,18 +890,24 @@ export default function BrandingEditor({
                 </div>
                 
                 <div>
-                                  <div className="flex items-center justify-between mb-4">
-                  <Label>Pricing Plans ({settings.pricingSection.plans.length}/5)</Label>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={addPricingPlan}
-                    disabled={settings.pricingSection.plans.length >= 5}
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Plan
-                  </Button>
-                </div>
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Note:</strong> Each pricing plan includes exactly 1 QR Code. This quantity cannot be changed.
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center justify-between mb-4">
+                    <Label>Pricing Plans ({settings.pricingSection.plans.length}/5)</Label>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={addPricingPlan}
+                      disabled={settings.pricingSection.plans.length >= 5}
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Plan
+                    </Button>
+                  </div>
                   
                   <div className="space-y-4">
                     {settings.pricingSection.plans.map((plan, index) => (
@@ -939,15 +967,11 @@ export default function BrandingEditor({
                           <div>
                             <Label>Quantity</Label>
                             <Input 
-                              value={plan.quantity}
-                              onChange={(e) => {
-                                const newPlans = [...settings.pricingSection.plans];
-                                newPlans[index].quantity = e.target.value;
-                                handleSettingsChange('pricingSection.plans', newPlans);
-                              }}
-                              placeholder="10 QR Codes"
-                              className="mt-1"
+                              value="1 QR Code"
+                              disabled
+                              className="mt-1 bg-gray-100 cursor-not-allowed"
                             />
+                            <p className="text-xs text-gray-500 mt-1">Quantity is fixed at 1 QR Code per plan</p>
                           </div>
                           <div>
                             <Label>Button Text</Label>

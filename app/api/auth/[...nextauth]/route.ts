@@ -204,54 +204,32 @@ const handler = NextAuth({
       console.log('🔍 NEXTAUTH DEBUG: ========== Redirect Callback ==========');
       console.log('🔍 NEXTAUTH DEBUG: URL:', url);
       console.log('🔍 NEXTAUTH DEBUG: Base URL:', baseUrl);
-      
-      // Always respect the callbackUrl if provided
-      if (url && url.includes("callbackUrl=")) {
-        const cbUrl = decodeURIComponent(url.split("callbackUrl=").pop()?.split("&")[0] || "");
+
+      // Respect explicit callbackUrl param (used by OAuth flows)
+      if (url && url.includes('callbackUrl=')) {
+        const cbUrl = decodeURIComponent(url.split('callbackUrl=').pop()?.split('&')[0] || '');
         console.log('🔍 NEXTAUTH DEBUG: Callback URL found:', cbUrl);
-        if (cbUrl.startsWith("/")) return cbUrl;
-        if (cbUrl.startsWith("http")) return cbUrl;
+        if (cbUrl.startsWith('/')) return cbUrl;
+        if (cbUrl.startsWith('http')) return cbUrl;
       }
-      
-      // If logging out, go to home page
-      if (url && url.endsWith("/api/auth/signout")) {
-        console.log('🔍 NEXTAUTH DEBUG: Sign out detected, redirecting to home');
-        return "/";
+
+      // Never override NextAuth internal JSON callbacks (prevents breaking credentials sign-in with redirect:false)
+      if (url && (url.includes('/api/auth/callback/credentials') || url.includes('json=true'))) {
+        console.log('🔍 NEXTAUTH DEBUG: Detected credentials/json flow, returning original URL to avoid redirect interference');
+        return url;
       }
-      
-      // If logging out, go to /admin/login
-      if (url && url.endsWith("/admin/login")) {
-        console.log('🔍 NEXTAUTH DEBUG: Admin login detected, redirecting to admin login');
-        return "/admin/login";
+
+      // Sign-out goes to home
+      if (url && url.endsWith('/api/auth/signout')) {
+        return '/';
       }
-      
-      // If logging in, check if user needs to complete profile
-      if (url && url.endsWith("/admin")) {
-        console.log('🔍 NEXTAUTH DEBUG: Admin route detected, redirecting to admin');
-        return "/admin";
-      }
-      
-      // For OAuth sign-in, redirect to partners page by default
-      if (url && url.includes("/api/auth/signin")) {
-        console.log('🔍 NEXTAUTH DEBUG: OAuth signin detected, redirecting to partners');
-        return "/partners";
-      }
-      
-      // For OAuth callback, redirect to partners page
-      if (url && url.includes("/api/auth/callback")) {
-        console.log('🔍 NEXTAUTH DEBUG: OAuth callback detected, redirecting to partners');
-        return "/partners";
-      }
-      
-      // For any other auth-related URLs, redirect to partners
-      if (url && url.includes("/api/auth/")) {
-        console.log('🔍 NEXTAUTH DEBUG: Other auth route detected, redirecting to partners');
-        return "/partners";
-      }
-      
-      console.log('🔍 NEXTAUTH DEBUG: Fallback redirect to partners');
-      // Fallback to partners page
-      return "/partners";
+
+      // Allow same-origin URLs as-is
+      if (url?.startsWith(baseUrl)) return url;
+      if (url?.startsWith('/')) return url;
+
+      // Default post-auth landing page
+      return `${baseUrl}/partners`;
     },
   },
 });

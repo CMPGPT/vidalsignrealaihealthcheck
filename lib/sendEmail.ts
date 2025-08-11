@@ -5,15 +5,17 @@ console.log('✅ Email template ready for secure links');
 
 export default async function sendEmail(to: string, subject: string, html: string) {
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
   });
 
   const mailOptions = {
-    from: `"VidalSigns" <${process.env.GMAIL_USER}>`,
+    from: `"VidalSigns" <${process.env.SMTP_FROM}>`,
     to,
     subject,
     html,
@@ -30,15 +32,17 @@ export default async function sendEmail(to: string, subject: string, html: strin
 
 export async function sendOtpEmail(email: string, otp: string) {
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
-      user: process.env.GMAIL_USER, // আপনার Gmail
+      user: process.env.SMTP_USER,
       pass: process.env.GMAIL_APP_PASSWORD, // অ্যাপ পাসওয়ার্ড
     },
   });
 
   const mailOptions = {
-    from: `"VidalSigns Support" <${process.env.GMAIL_USER}>`,
+    from: `"VidalSigns Support" <${process.env.SMTP_FROM}>`,
     to: email,
     subject: 'Your OTP for Password Reset',
     html: `
@@ -63,10 +67,12 @@ export async function sendSecureLinksEmail(
   quantity: number
 ) {
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
   });
 
@@ -114,7 +120,7 @@ export async function sendSecureLinksEmail(
   console.log('✅ Email table HTML created successfully');
 
   const mailOptions = {
-    from: `"${brandName} via VidalSigns" <${process.env.GMAIL_USER}>`,
+    from: `"${brandName} via VidalSigns" <${process.env.SMTP_FROM}>`,
     to: customerEmail,
     replyTo: decryptedPartnerEmail,
     subject: `Your ${plan} Purchase from ${brandName}`,
@@ -224,10 +230,12 @@ export async function sendPartnerNotificationEmail(
   amount: number
 ) {
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
   });
 
@@ -237,7 +245,7 @@ export async function sendPartnerNotificationEmail(
     : `New Purchase on ${brandName} - ${plan}`;
 
   const mailOptions = {
-    from: `"VidalSigns" <${process.env.GMAIL_USER}>`,
+    from: `"VidalSigns" <${process.env.SMTP_FROM}>`,
     to: partnerEmail,
     subject: subject,
     html: `
@@ -302,15 +310,17 @@ export async function sendPartnerNotificationEmail(
 // Send password change OTP email
 export const sendPasswordOTPEmail = async (email: string, otp: string) => {
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
   });
 
   const mailOptions = {
-    from: `"VidalSigns" <${process.env.GMAIL_USER}>`,
+    from: `"VidalSigns" <${process.env.SMTP_FROM}>`,
     to: email,
     subject: 'Password Change Verification - VidalSigns',
     html: `
@@ -371,17 +381,19 @@ export const sendPasswordOTPEmail = async (email: string, otp: string) => {
 // Send account verification email
 export const sendVerificationEmail = async (email: string, verificationToken: string) => {
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
   });
 
   const verificationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify-email?token=${verificationToken}`;
 
   const mailOptions = {
-    from: `"VidalSigns" <${process.env.GMAIL_USER}>`,
+    from: `"VidalSigns" <${process.env.SMTP_FROM}>`,
     to: email,
     subject: 'Verify Your VidalSigns Account',
     html: `
