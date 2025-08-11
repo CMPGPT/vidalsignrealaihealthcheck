@@ -75,6 +75,35 @@ const handler = NextAuth({
       if (account?.provider === 'google' || account?.provider === 'facebook') {
         console.log('🔍 NEXTAUTH DEBUG: OAuth login detected');
         let partnerUser = await PartnerUser.findOne({ email: user.email });
+
+        // If not found by plain email, try encrypted email and fallback decryption scan (to unify accounts)
+        if (!partnerUser) {
+          console.log('🔍 NEXTAUTH DEBUG: OAuth user not found by plain email, trying encrypted lookup');
+          try {
+            const { doubleEncrypt, doubleDecrypt } = await import('@/lib/encryption');
+            const encryptedEmail = doubleEncrypt(user.email || '');
+            partnerUser = await PartnerUser.findOne({ email: encryptedEmail });
+
+            if (!partnerUser) {
+              console.log('🔍 NEXTAUTH DEBUG: Encrypted lookup failed, scanning all users to decrypt emails');
+              const allUsers = await PartnerUser.find();
+              for (const potentialUser of allUsers) {
+                try {
+                  const decryptedEmail = doubleDecrypt(potentialUser.email);
+                  if (decryptedEmail === user.email) {
+                    partnerUser = potentialUser;
+                    break;
+                  }
+                } catch (e) {
+                  continue;
+                }
+              }
+            }
+          } catch (e) {
+            console.log('⚠️ NEXTAUTH DEBUG: Encryption module unavailable or failed during OAuth account merge');
+          }
+        }
+
         if (!partnerUser) {
           // Create new partner user with unique_id
           partnerUser = await PartnerUser.create({

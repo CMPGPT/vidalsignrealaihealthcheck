@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import dbConnect from '@/lib/dbConnect';
 import BrandSettings, { generatePartnerUrl } from '@/models/BrandSettings';
+import PartnerUser from '@/models/PartnerUser';
+import { doubleEncrypt, doubleDecrypt } from '@/lib/encryption';
 
 // POST - Deploy website for the authenticated user
 export async function POST(req: NextRequest) {
@@ -19,13 +21,34 @@ export async function POST(req: NextRequest) {
 
     await dbConnect();
 
-    // Find brand settings for this user using email
-    const brandSettings = await BrandSettings.findOne({ 
-      $or: [
-        { userId: token.email },
-        { userId: token.sub }
-      ]
-    });
+    // Resolve the authenticated partner user from token.email (with encrypted fallback)
+    let user = await PartnerUser.findOne({ email: token.email });
+    if (!user) {
+      try {
+        const encryptedEmail = doubleEncrypt(token.email as string);
+        user = await PartnerUser.findOne({ email: encryptedEmail });
+        if (!user) {
+          const allUsers = await PartnerUser.find();
+          for (const potentialUser of allUsers) {
+            try {
+              const decryptedEmail = doubleDecrypt(potentialUser.email);
+              if (decryptedEmail === token.email) {
+                user = potentialUser;
+                break;
+              }
+            } catch {}
+          }
+        }
+      } catch {}
+    }
+
+    if (!user) {
+      console.log('❌ DEPLOY WEBSITE: User not resolved from token');
+      return NextResponse.json({ message: 'User not found' }, { status: 404 });
+    }
+
+    // BrandSettings are keyed by Mongo user _id string
+    const brandSettings = await BrandSettings.findOne({ userId: String(user._id) });
 
     if (!brandSettings) {
       console.log('❌ DEPLOY WEBSITE: No brand settings found');
@@ -124,13 +147,30 @@ export async function GET(req: NextRequest) {
 
     await dbConnect();
 
-    // Find brand settings for this user using email
-    const brandSettings = await BrandSettings.findOne({ 
-      $or: [
-        { userId: token.email },
-        { userId: token.sub }
-      ]
-    });
+    // Resolve user then find brand settings by userId (Mongo _id string)
+    let user = await PartnerUser.findOne({ email: token.email });
+    if (!user) {
+      try {
+        const encryptedEmail = doubleEncrypt(token.email as string);
+        user = await PartnerUser.findOne({ email: encryptedEmail });
+        if (!user) {
+          const allUsers = await PartnerUser.find();
+          for (const potentialUser of allUsers) {
+            try {
+              const decryptedEmail = doubleDecrypt(potentialUser.email);
+              if (decryptedEmail === token.email) {
+                user = potentialUser;
+                break;
+              }
+            } catch {}
+          }
+        }
+      } catch {}
+    }
+
+    const brandSettings = user
+      ? await BrandSettings.findOne({ userId: String(user._id) })
+      : null;
 
     if (!brandSettings) {
       console.log('❌ GET DEPLOYMENT STATUS: No brand settings found');
