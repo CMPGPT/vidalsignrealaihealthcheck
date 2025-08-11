@@ -10,6 +10,7 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import isEmail from 'validator/lib/isEmail';
 import Swal from 'sweetalert2'
 import { Poppins, Raleway } from 'next/font/google';
+import { signIn } from 'next-auth/react';
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -456,6 +457,7 @@ export default function Signup() {
               <div className="flex flex-col gap-3">
                 <button
                   type="button"
+                  onClick={() => signIn('google', { callbackUrl: '/partners' })}
                   className="inline-flex items-center justify-center w-full h-10 px-4 border border-input rounded-md shadow-sm bg-white hover:bg-muted transition-colors"
                 >
                   <svg className="w-5 h-5 mr-2" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg">
@@ -469,6 +471,7 @@ export default function Signup() {
 
                 <button
                   type="button"
+                  onClick={() => signIn('facebook', { callbackUrl: '/partners' })}
                   className="inline-flex items-center justify-center w-full h-10 px-4 border border-input rounded-md shadow-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                 >
                   <svg className="w-5 h-5 mr-2 fill-white" viewBox="0 0 24 24">

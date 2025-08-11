@@ -214,7 +214,7 @@ export default function Login() {
               <div className="mt-4 flex flex-col gap-3">
                 <button
                   type="button"
-                  onClick={() => signIn('google')}
+                  onClick={() => signIn('google', { callbackUrl: '/partners' })}
                   className="inline-flex items-center justify-center w-full h-10 px-4 border border-input rounded-md shadow-sm bg-white hover:bg-muted transition-colors"
                 >
                   <svg className="w-5 h-5 mr-2" viewBox="0 0 533.5 544.3" xmlns="http://www.w3.org/2000/svg">
@@ -228,7 +228,7 @@ export default function Login() {
 
                 <button
                   type="button"
-                  onClick={() => signIn('facebook')}
+                  onClick={() => signIn('facebook', { callbackUrl: '/partners' })}
                   className="inline-flex items-center justify-center w-full h-10 px-4 border border-input rounded-md shadow-sm bg-blue-600 text-white hover:bg-blue-700 transition-colors"
                 >
                   <svg className="w-5 h-5 mr-2 fill-white" viewBox="0 0 24 24">

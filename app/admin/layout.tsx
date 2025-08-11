@@ -2,6 +2,7 @@
 
 import { Layout } from "@/components/layout/Layout";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import ProfileCompletionBanner from "@/components/admin/ProfileCompletionBanner";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -133,7 +134,10 @@ export default function AdminLayout({
             <div className="p-6 md:p-8 md:pt-6">
               <div className="md:mt-0 mt-8">
                 {!isLoginPage && (
-                  <h1 className="text-2xl font-bold mb-6">Super Admin Dashboard</h1>
+                  <>
+                    <h1 className="text-2xl font-bold mb-6">Super Admin Dashboard</h1>
+                    <ProfileCompletionBanner />
+                  </>
                 )}
                 {children}
               </div>

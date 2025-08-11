@@ -57,6 +57,8 @@ const handler = NextAuth({
   },
   pages: {
     signIn: "/login",
+    signOut: "/",
+    error: "/login",
   },
   secret: process.env.NEXTAUTH_SECRET,
   
@@ -79,15 +81,22 @@ const handler = NextAuth({
             unique_id: uuidv4(),
             first_Name: (profile as any)?.given_name || (profile as any)?.first_name || (profile as any)?.name?.split(' ')[0] || 'GoogleUser',
             last_Name: (profile as any)?.family_name || (profile as any)?.last_name || (profile as any)?.name?.split(' ')[1] || '',
-            state: '',
-            organization_name: '',
+            state: 'Unknown', // Set a default value for required field
+            organization_name: 'Personal Account', // Set a default value for required field
             email: user.email,
             password: uuidv4(), // random password, not used
+            verified: true, // OAuth users are automatically verified
+            profileComplete: false, // OAuth users need to complete their profile
           });
         } else if (!partnerUser.unique_id) {
           partnerUser.unique_id = uuidv4();
           await partnerUser.save();
         }
+        
+        // Set user type for OAuth users
+        (user as any).userType = 'partner';
+        (user as any).unique_id = partnerUser.unique_id;
+        (user as any).partnerId = (partnerUser as any)._id.toString();
       } else {
         console.log('🔍 NEXTAUTH DEBUG: Credentials login detected');
       }
@@ -110,6 +119,11 @@ const handler = NextAuth({
         token.partnerId = (user as any).partnerId || (user as any).id; // Store the MongoDB _id as partnerId
         token.email = user.email;
         token.name = user.name;
+        
+        // Store user type
+        if ((user as any).userType) {
+          token.userType = (user as any).userType;
+        }
       }
       
       // If token doesn't have unique_id but has email, try to find it in database
@@ -171,22 +185,73 @@ const handler = NextAuth({
         (session.user as any).unique_id = token.unique_id;
         (session.user as any).partnerId = token.partnerId; // Add partnerId to session
         (session.user as any).userType = token.userType;
+        
+        // Check if user needs to complete profile (for OAuth users)
+        if (token.email) {
+          try {
+            const partnerUser = await PartnerUser.findOne({ email: token.email });
+            if (partnerUser) {
+              (session.user as any).profileComplete = partnerUser.profileComplete;
+            }
+          } catch (error) {
+            console.log('🔍 NEXTAUTH DEBUG: Could not check profile completion status');
+          }
+        }
       }
       return session;
     },
     async redirect({ url, baseUrl }) {
+      console.log('🔍 NEXTAUTH DEBUG: ========== Redirect Callback ==========');
+      console.log('🔍 NEXTAUTH DEBUG: URL:', url);
+      console.log('🔍 NEXTAUTH DEBUG: Base URL:', baseUrl);
+      
       // Always respect the callbackUrl if provided
       if (url && url.includes("callbackUrl=")) {
         const cbUrl = decodeURIComponent(url.split("callbackUrl=").pop()?.split("&")[0] || "");
+        console.log('🔍 NEXTAUTH DEBUG: Callback URL found:', cbUrl);
         if (cbUrl.startsWith("/")) return cbUrl;
         if (cbUrl.startsWith("http")) return cbUrl;
       }
+      
+      // If logging out, go to home page
+      if (url && url.endsWith("/api/auth/signout")) {
+        console.log('🔍 NEXTAUTH DEBUG: Sign out detected, redirecting to home');
+        return "/";
+      }
+      
       // If logging out, go to /admin/login
-      if (url && url.endsWith("/admin/login")) return "/admin/login";
-      // If logging in, go to /admin
-      if (url && url.endsWith("/admin")) return "/admin";
-      // Fallback to baseUrl
-      return baseUrl || "/admin/login";
+      if (url && url.endsWith("/admin/login")) {
+        console.log('🔍 NEXTAUTH DEBUG: Admin login detected, redirecting to admin login');
+        return "/admin/login";
+      }
+      
+      // If logging in, check if user needs to complete profile
+      if (url && url.endsWith("/admin")) {
+        console.log('🔍 NEXTAUTH DEBUG: Admin route detected, redirecting to admin');
+        return "/admin";
+      }
+      
+      // For OAuth sign-in, redirect to partners page by default
+      if (url && url.includes("/api/auth/signin")) {
+        console.log('🔍 NEXTAUTH DEBUG: OAuth signin detected, redirecting to partners');
+        return "/partners";
+      }
+      
+      // For OAuth callback, redirect to partners page
+      if (url && url.includes("/api/auth/callback")) {
+        console.log('🔍 NEXTAUTH DEBUG: OAuth callback detected, redirecting to partners');
+        return "/partners";
+      }
+      
+      // For any other auth-related URLs, redirect to partners
+      if (url && url.includes("/api/auth/")) {
+        console.log('🔍 NEXTAUTH DEBUG: Other auth route detected, redirecting to partners');
+        return "/partners";
+      }
+      
+      console.log('🔍 NEXTAUTH DEBUG: Fallback redirect to partners');
+      // Fallback to partners page
+      return "/partners";
     },
   },
 });

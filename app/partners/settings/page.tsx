@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CreditCard, FileText, Building, Globe, Loader2, Upload, Palette, Rocket, ExternalLink, Image, TrendingUp, Users, DollarSign, RefreshCw, Eye, EyeOff } from "lucide-react";
+import { CreditCard, FileText, Building, Globe, Loader2, Upload, Palette, Rocket, ExternalLink, Image, TrendingUp, Users, DollarSign, RefreshCw, Eye, EyeOff, AlertTriangle } from "lucide-react";
 import { useSession } from 'next-auth/react';
 import { toast } from "sonner";
 import { useUploadThing } from "@/lib/uploadthing-hooks";
@@ -109,6 +109,7 @@ interface BrandSettings {
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("account");
+  const [showProfileCompletionAlert, setShowProfileCompletionAlert] = useState(false);
   const [profileData, setProfileData] = useState<ProfileData>({
     firstName: '',
     lastName: '',
@@ -298,6 +299,10 @@ export default function SettingsPage() {
         if (profileData.success) {
           console.log('✅ SETTINGS: Profile data received:', profileData.profile);
           setProfileData(profileData.profile);
+          
+          // Check if profile is complete (has state and organization name)
+          const isProfileComplete = profileData.profile.state && profileData.profile.organizationName;
+          setShowProfileCompletionAlert(!isProfileComplete);
         } else {
           console.log('❌ SETTINGS: Failed to fetch profile:', profileData.message);
           toast.error('Failed to load profile data');
@@ -377,6 +382,11 @@ export default function SettingsPage() {
       if (response.ok && data.success) {
         console.log('✅ SETTINGS: Profile updated successfully');
         toast.success('Profile updated successfully!');
+        
+        // Check if profile is now complete and hide alert
+        if (profileData.state && profileData.organizationName) {
+          setShowProfileCompletionAlert(false);
+        }
       } else {
         console.log('❌ SETTINGS: Profile update failed:', data.message);
         toast.error(data.message || 'Failed to update profile');
@@ -416,6 +426,11 @@ export default function SettingsPage() {
       if (response.ok && data.success) {
         console.log('✅ SETTINGS: Business info updated successfully');
         toast.success('Business information updated successfully!');
+        
+        // Check if profile is now complete and hide alert
+        if (profileData.state && profileData.organizationName) {
+          setShowProfileCompletionAlert(false);
+        }
       } else {
         console.log('❌ SETTINGS: Business info update failed:', data.message);
         toast.error(data.message || 'Failed to update business information');
@@ -760,6 +775,25 @@ export default function SettingsPage() {
 
   return (
     <div>
+      {/* Profile Completion Alert */}
+      {showProfileCompletionAlert && (
+        <Card className="mb-6 border-orange-200 bg-orange-50">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-3">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              <div>
+                <h3 className="font-medium text-orange-800">
+                  Complete Your Profile
+                </h3>
+                <p className="text-sm text-orange-700">
+                  Please provide your state and organization information to continue using the platform.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       {/* <h2 className="text-xl font-semibold mb-6">Account Settings</h2> */}
       
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">

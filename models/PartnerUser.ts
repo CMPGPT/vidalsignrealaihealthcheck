@@ -24,6 +24,7 @@ export interface IPartnerUser extends Document {
   passwordChangeOTPExpiry?: Date;
   twoFactorAuth: boolean;
   verified: boolean;
+  profileComplete: boolean;
   verificationToken?: string;
   verificationTokenExpiry?: Date;
 }
@@ -33,8 +34,8 @@ const PartnerUserSchema: Schema = new Schema(
     unique_id: { type: String, required: true, unique: true },
     first_Name: { type: String, required: true },
     last_Name: { type: String, required: true },
-    state: { type: String, required: true },
-    organization_name: { type: String, required: true },
+      state: { type: String, required: true },
+  organization_name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     website_link: { type: String },
@@ -53,6 +54,7 @@ const PartnerUserSchema: Schema = new Schema(
     passwordChangeOTPExpiry: { type: Date },
     twoFactorAuth: { type: Boolean, default: false },
     verified: { type: Boolean, default: false },
+    profileComplete: { type: Boolean, default: false },
     verificationToken: { type: String },
     verificationTokenExpiry: { type: Date },
   },

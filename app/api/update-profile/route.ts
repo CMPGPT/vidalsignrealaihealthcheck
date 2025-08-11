@@ -113,6 +113,11 @@ export async function PUT(request: NextRequest) {
       updateData.business_type = body.businessType ? doubleEncrypt(body.businessType) : '';
     }
 
+    // Check if required fields are provided to mark profile as complete
+    if (body.state && body.organizationName) {
+      updateData.profileComplete = true;
+    }
+
     console.log('🔍 UPDATE PROFILE: Updating with encrypted data');
 
     // Update the partner user
