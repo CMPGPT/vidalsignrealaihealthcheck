@@ -28,9 +28,7 @@ export default function RootLayout({
     <html lang="en" className={raleway.className} suppressHydrationWarning>
       <head />
       <body suppressHydrationWarning>
-        <AppProviders>
-          {children}
-        </AppProviders>
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );
