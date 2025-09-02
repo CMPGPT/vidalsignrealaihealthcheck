@@ -37,6 +37,10 @@ export default function Home() {
     document.getElementById('upload-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
+  const scrollToSection = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   const handleFileSelect = (files: FileList | null) => {
     if (files && files.length > 0) {
       const file = files[0];
@@ -333,7 +337,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
   }, []);
 
   return (
-    <div className="text-gray-800 antialiased">
+    <div className="text-gray-800 antialiased" style={{ scrollBehavior: 'smooth' }}>
       {/* HIPAA Compliance Banner */}
       <div className="bg-blue-50 text-blue-800 text-sm font-semibold p-2 text-center">
         <div className="container mx-auto flex items-center justify-center space-x-2">
@@ -362,7 +366,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
 
       <main>
         {/* Hero Section */}
-        <section className="hero-bg text-center py-20 sm:py-24 lg:py-32">
+        <section id="how-it-works" className="hero-bg text-center py-20 sm:py-24 lg:py-32">
           <div className="container mx-auto px-4">
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight leading-tight">
               Understand Your Lab Results
@@ -659,8 +663,42 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
             </div>
           </div>
         </section>
+
+        {/* Security Section */}
+        <section id="security" className="py-16 sm:py-20 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <h3 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">Your Privacy & Security</h3>
+              <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-600">We take your health data seriously with enterprise-grade security and HIPAA compliance.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+              <div className="text-center p-6 bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="mx-auto w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                  <ShieldCheck className="h-8 w-8 text-blue-600" />
+                </div>
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">HIPAA Compliant</h4>
+                <p className="text-gray-600">Full compliance with healthcare privacy regulations and industry standards.</p>
+              </div>
+              <div className="text-center p-6 bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <ActivitySquare className="h-8 w-8 text-green-600" />
+                </div>
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">Bank-Level Encryption</h4>
+                <p className="text-gray-600">Your data is encrypted in transit and at rest using military-grade security.</p>
+              </div>
+              <div className="text-center p-6 bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="mx-auto w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle2 className="h-8 w-8 text-purple-600" />
+                </div>
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">Never Shared</h4>
+                <p className="text-gray-600">Your health information is never sold, shared, or used for marketing purposes.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Pricing Section */}
-        <section className="py-16 sm:py-20 bg-white">
+        <section id="pricing" className="py-16 sm:py-20 bg-white">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h3 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">Simple, One-Time Pricing</h3>
@@ -718,23 +756,23 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
               <div>
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300">Platform</h3>
                 <ul className="mt-4 space-y-3">
-                  <li><a href="#" className="text-gray-400 hover:text-white transition-colors">How It Works</a></li>
-                  <li><a href="#pricing" className="text-gray-400 hover:text-white transition-colors">Pricing</a></li>
-                  <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Security</a></li>
+                  <li><button onClick={() => scrollToSection('how-it-works')} className="text-gray-400 hover:text-white transition-colors text-left">How It Works</button></li>
+                  <li><button onClick={() => scrollToSection('pricing')} className="text-gray-400 hover:text-white transition-colors text-left">Pricing</button></li>
+                  <li><button onClick={() => scrollToSection('security')} className="text-gray-400 hover:text-white transition-colors text-left">Security</button></li>
                 </ul>
               </div>
-              <div>
+              {/* <div>
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300">Company</h3>
                 <ul className="mt-4 space-y-3">
                   <li><a href="#" className="text-gray-400 hover:text-white transition-colors">About Us</a></li>
                   <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Blog</a></li>
                   <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Contact</a></li>
                 </ul>
-              </div>
+              </div> */}
               <div>
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300">For Professionals</h3>
                 <ul className="mt-4 space-y-3">
-                  <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Partner with Us</a></li>
+                  <li><a href="http://partners.vidalsigns.com" target='_' className="text-gray-400 hover:text-white transition-colors">Partner with Us</a></li>
                 </ul>
               </div>
             </div>

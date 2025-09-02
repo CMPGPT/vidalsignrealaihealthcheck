@@ -421,13 +421,13 @@ export default function SecureChatPage() {
             "flex flex-col"
           )}
         >
-          <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center justify-between p-4 border-b bg-white">
             <h2 className="font-semibold">Medical Report</h2>
             <Button variant="ghost" size="icon" onClick={toggleSidebar}>
               <X className="h-5 w-5" />
             </Button>
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto p-4 bg-white">
             {isProcessing ? (
               <Card className="w-full overflow-hidden bg-white transition-all duration-300 flex items-center justify-center p-8">
                 <div className="text-center space-y-4">
@@ -514,7 +514,7 @@ export default function SecureChatPage() {
                     {error && (
                       <p className="text-sm text-destructive mt-2">{error}</p>
                     )}
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-black">
                       Supported formats: PDF, JPEG, PNG (Max: 8MB)
                     </p>
                   </div>
@@ -627,7 +627,7 @@ export default function SecureChatPage() {
               size="icon"
               aria-label="Upload Report"
             >
-              <UploadCloud className="h-6 w-6" />
+              <UploadCloud className="h-6 w-6 text-black" />
             </Button>
           )}
 

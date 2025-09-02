@@ -3,6 +3,9 @@
 import Link from "next/link";
 
 const Footer = () => {
+  const scrollToSection = (sectionId: string) => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
   return (
     <footer className="bg-background py-12 border-t border-[hsl(var(--border))]">
       <div className="container mx-auto px-4 md:px-6">
@@ -20,19 +23,19 @@ const Footer = () => {
             <h3 className="text-lg font-medium mb-4">Platform</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/#features" className="text-muted-foreground hover:text-primary transition-colors">
-                  Features
-                </Link>
+                <button onClick={() => scrollToSection('how-it-works')} className="text-muted-foreground hover:text-primary transition-colors text-left">
+                  How It Works
+                </button>
               </li>
               <li>
-                <Link href="/#pricing" className="text-muted-foreground hover:text-primary transition-colors">
+                <button onClick={() => scrollToSection('pricing')} className="text-muted-foreground hover:text-primary transition-colors text-left">
                   Pricing
-                </Link>
+                </button>
               </li>
               <li>
-                <Link href="/" className="text-muted-foreground hover:text-primary transition-colors">
+                <button onClick={() => scrollToSection('security')} className="text-muted-foreground hover:text-primary transition-colors text-left">
                   Security
-                </Link>
+                </button>
               </li>
               <li>
                 <Link href="/" className="text-muted-foreground hover:text-primary transition-colors">
