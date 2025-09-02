@@ -43,7 +43,7 @@ export const Footer = () => {
                 For Professionals
               </h3>
               <ul className="mt-4 space-y-3">
-                <li><a href="#" className="text-muted hover:text-background transition-colors">Partner with Us</a></li>
+                <li><a href="http://partners.vidalsigns.com" className="text-muted hover:text-background transition-colors">Partner with Us</a></li>
               </ul>
             </div>
           </div>
