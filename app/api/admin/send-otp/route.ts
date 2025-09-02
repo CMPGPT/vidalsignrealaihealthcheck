@@ -20,14 +20,16 @@ export async function POST(req: NextRequest) {
   await OtpToken.create({ email, otp, validateUntil: expiry });
   // Send email
   const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: process.env.SMTP_SECURE === 'true',
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
     },
   });
   await transporter.sendMail({
-    from: `VidalSigns <${process.env.GMAIL_USER}>`,
+    from: `VidalSigns <${process.env.SMTP_FROM}>`,
     to: email,
     subject: 'Your Admin OTP',
     html: `

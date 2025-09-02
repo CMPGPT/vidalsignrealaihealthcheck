@@ -265,10 +265,10 @@ export default function Page() {
   };
 
   return (
-    <div className={`h-screen w-screen flex flex-col bg-gradient-to-b from-background to-muted/30 backdrop-blur-xs ${poppins.className} overflow-hidden`}>
+    <div className={`h-screen w-screen flex flex-col ${poppins.className} overflow-hidden`} style={{ backgroundColor: '#F9FAFB' }}>
       {/* Top logo section - 7% */}
-      <div className="h-[7%] min-h-[50px] w-full bg-background flex items-center justify-center border-b relative">
-        <div className="text-2xl font-bold text-primary">Vidal Chat</div>
+      <div className="h-[7%] min-h-[50px] w-full flex items-center justify-center border-b relative" style={{ backgroundColor: '#ffffff', borderColor: '#E5E7EB' }}>
+        <div className="text-2xl font-bold" style={{ color: '#2563eb' }}>Vidal Chat</div>
         
         {/* Countdown Timer */}
         {expiryTime && (
@@ -292,7 +292,7 @@ export default function Page() {
       </div>
 
       {/* Main content area - 93% */}
-      <main className="h-[93%] relative container max-w-7xl mx-auto px-0 lg:px-4 py-0 lg:py-6 flex flex-col">
+      <main className="h-[93%] relative container max-w-7xl mx-auto px-0 lg:px-4 py-0 lg:py-6 flex flex-col" style={{ backgroundColor: '#F9FAFB' }}>
         {/* Show expiration overlay if session has expired */}
         {isExpired && (
           <ExpirationOverlay />
@@ -312,32 +312,33 @@ export default function Page() {
         <div 
           className={cn(
             "fixed inset-y-0 left-0 w-full md:w-80 z-50 transition-transform duration-300 lg:hidden",
-            "transform bg-background shadow-xl",
+            "transform shadow-xl",
             sidebarOpen ? "translate-x-0" : "-translate-x-full",
             "flex flex-col"
           )}
+          style={{ backgroundColor: '#ffffff' }}
         >
-          <div className="flex items-center justify-between p-4 border-b">
-            <h2 className="font-semibold">Medical Report</h2>
+          <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: '#E5E7EB' }}>
+            <h2 className="font-semibold" style={{ color: '#111827' }}>Medical Report</h2>
             <Button variant="ghost" size="icon" onClick={toggleSidebar}>
               <X className="h-5 w-5" />
             </Button>
           </div>
           <div className="flex-1 overflow-y-auto p-4">
             {isProcessing ? (
-              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
+              <Card className="w-full overflow-hidden transition-all duration-300 flex items-center justify-center p-8" style={{ backgroundColor: '#ffffff' }}>
                 <div className="text-center space-y-4">
-                  <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-                  <p className="text-muted-foreground">Analyzing your document with AI...</p>
-                  <p className="text-xs text-muted-foreground">This may take up to 40 seconds</p>
+                  <div className="animate-spin w-12 h-12 border-4 rounded-full mx-auto" style={{ borderColor: '#2563eb', borderTopColor: 'transparent' }}></div>
+                  <p style={{ color: '#6B7280' }}>Analyzing your document with AI...</p>
+                  <p className="text-xs" style={{ color: '#6B7280' }}>This may take up to 40 seconds</p>
                 </div>
               </Card>
             ) : isSearchingReport ? (
-              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
+              <Card className="w-full overflow-hidden transition-all duration-300 flex items-center justify-center p-8" style={{ backgroundColor: '#ffffff' }}>
                 <div className="text-center space-y-4">
-                  <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-                  <p className="text-muted-foreground">Searching for existing reports...</p>
-                  <p className="text-xs text-muted-foreground">Checking database for previous uploads</p>
+                  <div className="animate-spin w-12 h-12 border-4 rounded-full mx-auto" style={{ borderColor: '#2563eb', borderTopColor: 'transparent' }}></div>
+                  <p style={{ color: '#6B7280' }}>Searching for existing reports...</p>
+                  <p className="text-xs" style={{ color: '#6B7280' }}>Checking database for previous uploads</p>
                 </div>
               </Card>
             ) : report ? (
@@ -348,14 +349,14 @@ export default function Page() {
                 databaseExpiryTime={databaseExpiryTime || undefined}
               />
             ) : (
-              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300">
+              <Card className="w-full overflow-hidden transition-all duration-300" style={{ backgroundColor: '#ffffff' }}>
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center justify-center space-y-4">
-                    <div className="p-4 bg-primary/10 rounded-full">
-                      <UploadCloud className="h-10 w-10 text-primary" />
+                    <div className="p-4 rounded-full" style={{ backgroundColor: 'rgba(37, 99, 235, 0.1)' }}>
+                      <UploadCloud className="h-10 w-10" style={{ color: '#2563eb' }} />
                     </div>
-                    <h3 className="text-xl font-medium">Upload your medical report</h3>
-                    <p className="text-center text-muted-foreground max-w-md">
+                    <h3 className="text-xl font-medium" style={{ color: '#111827' }}>Upload your medical report</h3>
+                    <p className="text-center max-w-md" style={{ color: '#6B7280' }}>
                       Upload your medical document and our AI will analyze it and provide you with a summary and insights.
                     </p>
                     <div className="pt-4">
@@ -378,7 +379,7 @@ export default function Page() {
                     {error && (
                       <p className="text-sm text-destructive mt-2">{error}</p>
                     )}
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-black!important">
                       Supported formats: PDF, JPEG, PNG (Max: 8MB)
                     </p>
                   </div>
@@ -392,19 +393,19 @@ export default function Page() {
           {/* Left column - Report summary or upload (visible on desktop) */}
           <div className="hidden lg:block space-y-6 lg:max-h-[calc(100vh-12rem)] overflow-y-auto animate-fade-in animate-in-delay-1">
             {isProcessing ? (
-              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
+              <Card className="w-full overflow-hidden transition-all duration-300 flex items-center justify-center p-8" style={{ backgroundColor: '#ffffff' }}>
                 <div className="text-center space-y-4">
-                  <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-                  <p className="text-muted-foreground">Analyzing your document with AI...</p>
-                  <p className="text-xs text-muted-foreground">This may take up to 40 seconds</p>
+                  <div className="animate-spin w-12 h-12 border-4 rounded-full mx-auto" style={{ borderColor: '#2563eb', borderTopColor: 'transparent' }}></div>
+                  <p style={{ color: '#6B7280' }}>Analyzing your document with AI...</p>
+                  <p className="text-xs" style={{ color: '#6B7280' }}>This may take up to 40 seconds</p>
                 </div>
               </Card>
             ) : isSearchingReport ? (
-              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
+              <Card className="w-full overflow-hidden transition-all duration-300 flex items-center justify-center p-8" style={{ backgroundColor: '#ffffff' }}>
                 <div className="text-center space-y-4">
-                  <div className="animate-spin w-12 h-12 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
-                  <p className="text-muted-foreground">Searching for existing reports...</p>
-                  <p className="text-xs text-muted-foreground">Checking database for previous uploads</p>
+                  <div className="animate-spin w-12 h-12 border-4 rounded-full mx-auto" style={{ borderColor: '#2563eb', borderTopColor: 'transparent' }}></div>
+                  <p style={{ color: '#6B7280' }}>Searching for existing reports...</p>
+                  <p className="text-xs" style={{ color: '#6B7280' }}>Checking database for previous uploads</p>
                 </div>
               </Card>
             ) : report ? (
@@ -415,14 +416,14 @@ export default function Page() {
                 databaseExpiryTime={databaseExpiryTime || undefined}
               />
             ) : (
-              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300">
+              <Card className="w-full overflow-hidden transition-all duration-300" style={{ backgroundColor: '#ffffff' }}>
                 <CardContent className="p-8">
                   <div className="flex flex-col items-center justify-center space-y-4">
-                    <div className="p-4 bg-primary/10 rounded-full">
-                      <UploadCloud className="h-12 w-12 text-primary" />
+                    <div className="p-4 rounded-full" style={{ backgroundColor: 'rgba(37, 99, 235, 0.1)' }}>
+                      <UploadCloud className="h-12 w-12" style={{ color: '#2563eb' }} />
                     </div>
-                    <h3 className="text-xl font-medium">Upload your medical report</h3>
-                    <p className="text-center text-muted-foreground max-w-md">
+                    <h3 className="text-xl font-medium" style={{ color: '#111827' }}>Upload your medical report</h3>
+                    <p className="text-center max-w-md" style={{ color: '#6B7280' }}>
                       Upload your medical document and our AI will analyze it and provide you with a summary and insights.
                     </p>
                     <div className="pt-4">

@@ -10,9 +10,9 @@ export async function POST(request: NextRequest) {
     console.log('🔍 STARTER CHECKOUT: Starting checkout session creation');
     
     const body = await request.json();
-    const { email, plan, amount } = body;
+    const { email, plan, amount, quantity } = body;
 
-    console.log('🔍 STARTER CHECKOUT: Creating session for:', { plan, amount, email });
+    console.log('🔍 STARTER CHECKOUT: Creating session for:', { plan, amount, email, quantity });
 
     // Validate required fields
     if (!email || !plan || !amount) {
@@ -26,17 +26,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Stripe configuration missing' }, { status: 500 });
     }
 
-    // Validate amount (should be 100 cents = $1.00)
-    if (amount !== 100) {
-      console.error('❌ STARTER CHECKOUT: Invalid amount:', amount);
-      return NextResponse.json({ error: 'Invalid amount for Starter plan' }, { status: 400 });
-    }
+    // Extract quantity for URL and metadata
+    const qrQuantity = quantity || 1;
+    const planDescription = qrQuantity === 1 ? '1 QR Code with 24-hour access' : `${qrQuantity} QR Codes with 24-hour access`;
 
     console.log('🔍 STARTER CHECKOUT: Creating Stripe session');
     console.log('🔍 STARTER CHECKOUT: Session params:', {
       amount,
       plan,
-      email
+      email,
+      quantity: qrQuantity
     });
 
     const session = await stripe.checkout.sessions.create({
@@ -46,8 +45,8 @@ export async function POST(request: NextRequest) {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'VidalSigns Starter Plan',
-              description: '1 QR Code with 24-hour access',
+              name: `VidalSigns - ${plan}`,
+              description: planDescription,
             },
             unit_amount: amount,
           },
@@ -55,13 +54,14 @@ export async function POST(request: NextRequest) {
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/starter-payment-success?session_id={CHECKOUT_SESSION_ID}&plan=starter&email=${encodeURIComponent(email)}`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-cancel?plan=starter`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/starter-payment-success?session_id={CHECKOUT_SESSION_ID}&plan=${encodeURIComponent(plan)}&email=${encodeURIComponent(email)}&quantity=${qrQuantity}`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/payment-cancel?plan=${encodeURIComponent(plan)}`,
       customer_email: email,
       metadata: {
-        plan: 'starter',
+        plan: plan,
         customerEmail: email,
         amount: amount.toString(),
+        quantity: qrQuantity.toString(),
       },
     });
 

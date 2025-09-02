@@ -24,7 +24,7 @@ const Header = ({ className, brandSettings, partnerId }: HeaderProps) => {
         : 'var(--primary)';
 
     return (
-        <header className={cn("w-full py-5 px-6 flex justify-center", className)}>
+        <header className={cn("w-full py-5 px-6 flex justify-center bg-white border-b border-gray-200", className)}>
             <div className="animate-fade-in-scale flex items-center gap-3">
                 {brandSettings?.logoUrl && (
                     <img 
@@ -33,7 +33,7 @@ const Header = ({ className, brandSettings, partnerId }: HeaderProps) => {
                         className="h-8 w-8 rounded object-cover"
                     />
                 )}
-                <h1 className="text-3xl font-semibold tracking-tight">
+                <h1 className="text-3xl font-semibold tracking-tight text-[#2563eb]">
                     <span 
                         className="text-2xl font-bold"
                         style={{ 

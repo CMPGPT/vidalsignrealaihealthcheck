@@ -47,9 +47,12 @@ export async function POST(request: NextRequest) {
       
       await dbConnect();
       
-      // Handle starter plan payments
-      if (plan === 'starter' && customerEmail) {
-        console.log('🔍 WEBHOOK: Processing starter plan payment for:', customerEmail);
+      // Handle starter plan and main website payments (plan can be starter or a plan name from homepage)
+      if (customerEmail && (plan === 'starter' || plan?.includes('QR Code'))) {
+        console.log('🔍 WEBHOOK: Processing VidalSigns payment for:', customerEmail, 'Plan:', plan);
+        
+        // Get quantity from metadata, default to 1
+        const purchaseQuantity = parseInt(session.metadata?.quantity || '1');
         
         // Check if this session has already been processed
         const existingPayment = await PaymentHistory.findOne({ 
@@ -58,41 +61,49 @@ export async function POST(request: NextRequest) {
         });
 
         if (existingPayment) {
-          console.log('✅ WEBHOOK: Starter payment already processed');
+          console.log('✅ WEBHOOK: Payment already processed');
           return NextResponse.json({ received: true });
         }
 
-        // Generate a unique chat ID and link ID
-        const chatId = `starter-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const linkId = uuidv4();
-        
-        // Set expiry time to 24 hours from now for starter plan
-        const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 24);
-        
-        // Create the secure link with a special partnerId for starter users
-        await SecureLink.create({
-          linkId,
-          partnerId: 'starter-user', // Special identifier for starter users
-          chatId,
-          expiresAt,
-          batchNo: 'basicstarter',
-          isUsed: false,
-          createdAt: new Date(),
-          metadata: {
-            plan: 'starter',
-            customerEmail: customerEmail,
-            amount: session.amount_total || 100,
-            sessionId: session.id
-          }
-        });
+        // Generate multiple secure links based on quantity
+        const secureLinks = [];
+        for (let i = 0; i < purchaseQuantity; i++) {
+          const chatId = `vidalsigns-${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${i}`;
+          const linkId = uuidv4();
+          
+          // Set expiry time to 24 hours from now
+          const expiresAt = new Date();
+          expiresAt.setHours(expiresAt.getHours() + 24);
+          
+          // Create the secure link
+          const secureLink = await SecureLink.create({
+            linkId,
+            partnerId: 'vidalsigns-main', // Special identifier for main website users
+            chatId,
+            expiresAt,
+            batchNo: plan === 'starter' ? 'basicstarter' : 'mainwebsite',
+            isUsed: false,
+            createdAt: new Date(),
+            metadata: {
+              plan: plan,
+              customerEmail: customerEmail,
+              amount: session.amount_total || 100,
+              sessionId: session.id,
+              purchaseQuantity: purchaseQuantity,
+              linkIndex: i + 1
+            }
+          });
+          
+          const secureLinkUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/secure/chat/${linkId}`;
+          secureLinks.push(secureLinkUrl);
+        }
 
         // Save payment history
         await PaymentHistory.create({
-          partnerId: 'starter-user',
+          partnerId: 'vidalsigns-main',
           transactionId: uuidv4(),
-          packageName: 'Starter Plan - 1 QR Code',
-          count: 1,
+          packageName: `${plan} - ${purchaseQuantity} QR Code${purchaseQuantity > 1 ? 's' : ''}`,
+          count: purchaseQuantity,
           amount: amount,
           currency: session.currency || 'usd',
           status: 'completed',
@@ -101,16 +112,17 @@ export async function POST(request: NextRequest) {
           stripeSessionId: session.id,
           stripePaymentIntentId: session.payment_intent as string,
           metadata: {
-            secureLink: linkId,
+            secureLinks: secureLinks,
             customerEmail: customerEmail,
-            plan: 'starter'
+            plan: plan,
+            quantity: purchaseQuantity
           }
         });
 
-        // Generate the secure link URL using the linkId from database
-        const secureLinkUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/secure/chat/${linkId}`;
-
-        // Format timestamps for email in ISO format
+        // Generate email with multiple secure links
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
+        
         const formatTime = (date: Date) => {
           return date.toISOString();
         };
@@ -118,19 +130,29 @@ export async function POST(request: NextRequest) {
         const createdTimeFormatted = formatTime(new Date());
         const expiresTimeFormatted = formatTime(expiresAt);
 
-        // Send email with the secure link
-        const emailSubject = 'Your VidalSigns QR Code is Ready!';
+        // Generate links HTML based on quantity
+        const linksHtml = secureLinks.map((link, index) => `
+          <div style="margin-bottom: 15px; padding: 15px; background-color: #f8fafc; border-radius: 8px; border-left: 4px solid #2563eb;">
+            <h4 style="color: #1e40af; margin: 0 0 10px 0;">QR Code ${index + 1}</h4>
+            <a href="${link}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 5px 0;">
+              Access QR Code ${index + 1}
+            </a>
+          </div>
+        `).join('');
+
+        // Send email with the secure links
+        const emailSubject = `Your VidalSigns ${purchaseQuantity === 1 ? 'QR Code is' : `${purchaseQuantity} QR Codes are`} Ready!`;
         const emailBody = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">Your VidalSigns QR Code is Ready!</h2>
-            <p>Thank you for purchasing the VidalSigns Starter Plan!</p>
+            <h2 style="color: #2563eb;">Your VidalSigns ${purchaseQuantity === 1 ? 'QR Code is' : `${purchaseQuantity} QR Codes are`} Ready!</h2>
+            <p>Thank you for purchasing ${plan}!</p>
             
             <div style="background-color: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="color: #1e40af; margin-top: 0;">Your Secure Link</h3>
-              <p>Click the link below to access your QR code and start using VidalSigns:</p>
-              <a href="${secureLinkUrl}" style="display: inline-block; background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 10px 0;">
-                Access Your QR Code
-              </a>
+              <h3 style="color: #1e40af; margin-top: 0;">Your Secure Link${purchaseQuantity > 1 ? 's' : ''}</h3>
+              <p>Click the link${purchaseQuantity > 1 ? 's' : ''} below to access your QR code${purchaseQuantity > 1 ? 's' : ''} and start using VidalSigns:</p>
+              
+              ${linksHtml}
+              
               <div style="margin-top: 15px; padding: 10px; background-color: #fff3cd; border-radius: 6px; border-left: 4px solid #ffc107;">
                 <p style="margin: 0; font-size: 14px; color: #856404;">
                   <strong>Created:</strong> ${createdTimeFormatted}<br>
@@ -139,21 +161,25 @@ export async function POST(request: NextRequest) {
               </div>
             </div>
             
-            <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="color: #166534; margin-top: 0;">What's Included</h3>
-              <ul style="color: #374151;">
-                <li>1 QR code for patient access</li>
-                <li>24-hour access period</li>
-                <li>Basic patient portal</li>
-                <li>HIPAA compliant</li>
-              </ul>
+            <div style="background-color: #e7f5ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <h4 style="color: #1e40af; margin-top: 0;">How to Use Your QR Code${purchaseQuantity > 1 ? 's' : ''}</h4>
+              <ol style="color: #334155; line-height: 1.6;">
+                <li>Click ${purchaseQuantity > 1 ? 'any of the secure links' : 'the secure link'} above</li>
+                <li>Upload your lab report (PDF or image)</li>
+                <li>Get instant AI-powered analysis in plain English</li>
+                <li>Ask questions about your results</li>
+                ${purchaseQuantity > 1 ? '<li>Each link can be used for a separate report analysis</li>' : ''}
+              </ol>
             </div>
             
-            <p>If you have any questions, please contact our support team.</p>
+            <p style="color: #64748b; font-size: 14px; line-height: 1.6;">
+              ${purchaseQuantity > 1 ? 'Each secure link is' : 'This secure link is'} valid for 24 hours and can only be used once. If you need help, reply to this email or contact our support team.
+            </p>
             
-            <p style="color: #64748b; font-size: 14px;">
-              Best regards,<br>
-              The VidalSigns Team
+            <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+            
+            <p style="color: #94a3b8; font-size: 12px; text-align: center;">
+              This email was sent from VidalSigns. Thank you for choosing us for your health analysis needs.
             </p>
           </div>
         `;

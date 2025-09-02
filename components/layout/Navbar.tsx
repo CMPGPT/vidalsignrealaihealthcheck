@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Shield } from "lucide-react";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -27,15 +27,23 @@ const Navbar = () => {
   };
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
-          ? "glass-morphism py-3"
-          : "bg-transparent py-5"
-      }`}
-    >
+    <header className="fixed top-0 left-0 right-0 z-50">
+      {/* HIPAA banner */}
+      <div className="bg-blue-50 text-blue-800 text-xs md:text-sm font-semibold py-1.5">
+        <div className="container mx-auto px-4 md:px-6 flex items-center justify-center gap-2">
+          <Shield className="h-4 w-4" />
+          <span>HIPAA Compliant Medical Platform</span>
+        </div>
+      </div>
+
+      {/* Main navbar */}
+      <div
+        className={`transition-all duration-300 ${
+          isScrolled ? "backdrop-blur bg-white/70 border-b border-gray-200" : "bg-transparent"
+        }`}
+      >
       <div className="container mx-auto px-4 md:px-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between py-4">
           <Link href="/" className="flex items-center">
             <span className="text-2xl font-bold text-primary">VidalSigns</span>
           </Link>
@@ -69,16 +77,17 @@ const Navbar = () => {
           </nav>
 
           <div className="hidden md:flex items-center space-x-4">
-            <Link href="/login">
-              <Button variant="outline" className="rounded-full px-6 hover:bg-primary/10 hover:text-primary">
-                Login
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button className="rounded-full px-6 bg-primary hover:bg-primary/90">
-                Sign Up
-              </Button>
-            </Link>
+            <Button
+              className="rounded-lg bg-blue-600 hover:bg-blue-700"
+              onClick={() => {
+                const el = document.getElementById('upload-section');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }}
+            >
+              Upload Report
+            </Button>
           </div>
 
           {/* Mobile Menu Button */}
@@ -143,6 +152,7 @@ const Navbar = () => {
           </div>
         </div>
       )}
+      </div>
     </header>
   );
 };

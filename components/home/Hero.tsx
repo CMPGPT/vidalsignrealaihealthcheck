@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { v4 as uuidv4 } from "uuid";
 import { useState } from "react";
-import { X, Mail, CheckCircle } from "lucide-react";
+import { X, Mail, CheckCircle, ImagePlus } from "lucide-react";
 
 const Hero = () => {
   const router = useRouter();
@@ -149,18 +149,19 @@ const Hero = () => {
             </Button>
           </div>
 
-          <div className="mt-16 md:mt-24 animate-fade-in-up [animation-delay:800ms]">
-            <GlassCard className="max-w-5xl mx-auto overflow-hidden p-1 md:p-2">
-              <div className="aspect-video rounded-lg overflow-hidden bg-cyan-50 border-2 border-cyan-100 flex items-center justify-center">
-                <Image
-                  src="/image/Screenshot 2025-03-19 004314.png"
-                  alt="VidalSigns Product Demo"
-                  width={1200}
-                  height={675}
-                  className="object-contain"
-                />
+          <div id="upload-section" className="mt-16 md:mt-24 animate-fade-in-up [animation-delay:800ms]">
+            <div
+              onClick={handleUploadClick}
+              className="max-w-5xl mx-auto p-6 md:p-8 rounded-2xl border-2 border-dashed border-gray-300 bg-white text-center cursor-pointer shadow-sm hover:shadow-md transition-all"
+            >
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <div className="p-4 rounded-full bg-primary/10">
+                  <ImagePlus className="h-10 w-10 text-primary" />
+                </div>
+                <p className="font-semibold text-primary">Click to upload your lab report</p>
+                <p className="text-xs text-muted-foreground">PDF, PNG, or JPG supported. Your data is private.</p>
               </div>
-            </GlassCard>
+            </div>
           </div>
 
           <div className="mt-16 flex flex-wrap justify-center gap-8 animate-fade-in-up [animation-delay:1000ms]">

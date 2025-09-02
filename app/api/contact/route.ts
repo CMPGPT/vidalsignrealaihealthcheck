@@ -15,10 +15,12 @@ export async function POST(request: NextRequest) {
 
     // Create transporter
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || '465'),
+      secure: process.env.SMTP_SECURE === 'true',
       auth: {
-        user: process.env.GMAIL_USER || 'textgpt.team@gmail.com',
-        pass: process.env.GMAIL_APP_PASSWORD || 'nmangtukuuziqmiv',
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
       },
     });
 
@@ -237,7 +239,7 @@ export async function POST(request: NextRequest) {
 
     // Email options
     const mailOptions = {
-      from: process.env.GMAIL_USER || 'textgpt.team@gmail.com',
+      from: process.env.SMTP_FROM,
       to: 'textgpt.team@gmail.com',
       subject: `📧 New Contact Form Submission from ${name}`,
       html: emailContent,

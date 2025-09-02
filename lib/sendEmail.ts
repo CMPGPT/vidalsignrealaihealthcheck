@@ -37,7 +37,7 @@ export async function sendOtpEmail(email: string, otp: string) {
     secure: process.env.SMTP_SECURE === 'true',
     auth: {
       user: process.env.SMTP_USER,
-      pass: process.env.GMAIL_APP_PASSWORD, // অ্যাপ পাসওয়ার্ড
+      pass: process.env.SMTP_PASS,
     },
   });
 

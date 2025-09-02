@@ -1,6 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: true
----
-Lookout for ESLint whenever you generate new code

@@ -324,7 +324,7 @@ export default function SecureChatPage() {
   // Show loading state while validating
   if (isValidating) {
     return (
-      <div className={`h-screen w-screen flex items-center justify-center bg-gradient-to-b from-background to-muted/30 backdrop-blur-xs ${poppins.className}`}>
+      <div className={`h-screen w-screen flex items-center justify-center bg-white ${poppins.className}`}>
         <div className="text-center space-y-4">
           <div 
             className="animate-spin w-12 h-12 border-4 border-t-transparent rounded-full mx-auto"
@@ -334,7 +334,7 @@ export default function SecureChatPage() {
                 : 'var(--primary) var(--primary) var(--primary) transparent'
             }}
           ></div>
-          <p className="text-muted-foreground">Validating secure link...</p>
+          <p className="text-black">Validating secure link...</p>
         </div>
       </div>
     );
@@ -343,7 +343,7 @@ export default function SecureChatPage() {
   // Show error state if validation failed
   if (validationError) {
     return (
-      <div className={`h-screen w-screen flex items-center justify-center bg-gradient-to-b from-background to-muted/30 backdrop-blur-xs ${poppins.className}`}>
+      <div className={`h-screen w-screen flex items-center justify-center bg-slate-100 backdrop-blur-xs ${poppins.className}`}>
         <Card className="w-full max-w-md mx-4">
           <CardContent className="p-6">
             <div className="text-center space-y-4">
@@ -369,14 +369,14 @@ export default function SecureChatPage() {
   }
 
   return (
-    <div className={`h-screen w-screen flex flex-col bg-gradient-to-b from-background to-muted/30 backdrop-blur-xs ${poppins.className} overflow-hidden`}>
+    <div className={`h-screen w-screen flex flex-col bg-slate-100 backdrop-blur-xs ${poppins.className} overflow-hidden`}>
       {/* Top logo section - 7% */}
       <div className="h-[7%] min-h-[50px] w-full bg-background flex items-center justify-center border-b relative">
         <Header brandSettings={brandSettings} partnerId={partnerId} />
         
         {/* Countdown Timer */}
         {expiryTime && (
-          <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+          <div className="absolute right-4 top-1/2 text-black transform -translate-y-1/2">
             <CountdownTimer 
               expiryTime={expiryTime} 
               onExpire={handleExpire}
@@ -429,7 +429,7 @@ export default function SecureChatPage() {
           </div>
           <div className="flex-1 overflow-y-auto p-4">
             {isProcessing ? (
-              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
+              <Card className="w-full overflow-hidden bg-white transition-all duration-300 flex items-center justify-center p-8">
                 <div className="text-center space-y-4">
                   <div 
                     className="animate-spin w-12 h-12 border-4 border-t-transparent rounded-full mx-auto"
@@ -439,12 +439,12 @@ export default function SecureChatPage() {
                         : 'var(--primary) var(--primary) var(--primary) transparent'
                     }}
                   ></div>
-                  <p className="text-muted-foreground">Analyzing your document with AI...</p>
-                  <p className="text-xs text-muted-foreground">This may take up to 40 seconds</p>
+                  <p className="text-black">Analyzing your document with AI...</p>
+                  <p className="text-xs text-black">This may take up to 40 seconds</p>
                 </div>
               </Card>
             ) : isSearchingReport ? (
-              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
+              <Card className="w-full overflow-hidden bg-white transition-all duration-300 flex items-center justify-center p-8">
                 <div className="text-center space-y-4">
                   <div 
                     className="animate-spin w-12 h-12 border-4 border-t-transparent rounded-full mx-auto"
@@ -454,8 +454,8 @@ export default function SecureChatPage() {
                         : 'var(--primary) var(--primary) var(--primary) transparent'
                     }}
                   ></div>
-                  <p className="text-muted-foreground">Searching for existing reports...</p>
-                  <p className="text-xs text-muted-foreground">Checking database for previous uploads</p>
+                  <p className="text-black">Searching for existing reports...</p>
+                  <p className="text-xs text-black">Checking database for previous uploads</p>
                 </div>
               </Card>
             ) : report ? (
@@ -468,7 +468,7 @@ export default function SecureChatPage() {
                 partnerId={partnerId}
               />
             ) : (
-              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300">
+              <Card className="w-full overflow-hidden backdrop-blur-sm bg-white transition-all duration-300">
                 <CardContent className="p-6">
                   <div className="flex flex-col items-center justify-center space-y-4">
                     <div 
@@ -489,7 +489,7 @@ export default function SecureChatPage() {
                       />
                     </div>
                     <h3 className="text-xl font-medium">Upload your medical report</h3>
-                    <p className="text-center text-muted-foreground max-w-md">
+                    <p className="text-center text-black max-w-md">
                       Upload your medical document and our AI will analyze it and provide you with a summary and insights.
                     </p>
                     <div className="pt-4">
@@ -528,7 +528,7 @@ export default function SecureChatPage() {
           {/* Left column - Report summary or upload (visible on desktop) */}
           <div className="hidden lg:block space-y-6 lg:max-h-[calc(100vh-12rem)] overflow-y-auto animate-fade-in animate-in-delay-1">
             {isProcessing ? (
-              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
+              <Card className="w-full overflow-hidden bg-white transition-all duration-300 flex items-center justify-center p-8">
                 <div className="text-center space-y-4">
                   <div 
                     className="animate-spin w-12 h-12 border-4 border-t-transparent rounded-full mx-auto"
@@ -543,7 +543,7 @@ export default function SecureChatPage() {
                 </div>
               </Card>
             ) : isSearchingReport ? (
-              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300 flex items-center justify-center p-8">
+              <Card className="w-full overflow-hidden bg-white transition-all duration-300 flex items-center justify-center p-8">
                 <div className="text-center space-y-4">
                   <div 
                     className="animate-spin w-12 h-12 border-4 border-t-transparent rounded-full mx-auto"
@@ -567,7 +567,7 @@ export default function SecureChatPage() {
                 partnerId={partnerId}
               />
             ) : (
-              <Card className="w-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300">
+              <Card className="w-full overflow-hidden backdrop-blur-sm bg-white transition-all text-black duration-300">
                 <CardContent className="p-8">
                   <div className="flex flex-col items-center justify-center space-y-4">
                     <div 
@@ -588,7 +588,7 @@ export default function SecureChatPage() {
                       />
                     </div>
                     <h3 className="text-xl font-medium">Upload your medical report</h3>
-                    <p className="text-center text-muted-foreground max-w-md">
+                    <p className="text-center max-w-md text-slate-500">
                       Upload your medical document and our AI will analyze it and provide you with a summary and insights.
                     </p>
                     <div className="pt-4">
@@ -610,7 +610,7 @@ export default function SecureChatPage() {
                     {error && (
                       <p className="text-sm text-destructive mt-2">{error}</p>
                     )}
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-slate-500">
                       Supported formats: PDF, JPEG, PNG (Max: 8MB)
                     </p>
                   </div>

@@ -47,10 +47,10 @@ interface Message {
 // Function to convert text with ** markers to properly formatted HTML
 function formatTextWithMarkers(text: string): string {
   if (!text) return '';
-  
+
   // Replace ** markers with proper bold tags
   let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold" style="color: var(--primary);">$1</strong>');
-  
+
   // @ts-ignore
   formattedText = formattedText.replace(/(\d+)\.\s+(.+?)(?=\n\d+\.|\n\n|$)/gs, (match, number, content) => {
     return `<div class="flex mb-3">
@@ -58,10 +58,10 @@ function formatTextWithMarkers(text: string): string {
       <div>${content}</div>
     </div>`;
   });
-  
+
   // Handle bullet points (lines starting with -)
   formattedText = formattedText.replace(/^\s*-\s+(.+)$/gm, '<li class="ml-6 mb-1">$1</li>');
-  
+
   // Wrap adjacent list items in <ul> tags
   formattedText = formattedText.replace(/<\/li>\n<li/g, '</li><li');
   // @ts-ignore
@@ -69,20 +69,20 @@ function formatTextWithMarkers(text: string): string {
     if (!match.includes('</li>')) return match;
     return '<ul class="list-disc my-2">' + match + '</ul>';
   });
-  
+
   // Convert paragraph breaks
   formattedText = formattedText.split('\n\n').map(para => {
     if (
-      !para.trim().startsWith('<div') && 
-      !para.trim().startsWith('<ul') && 
-      !para.trim().startsWith('<li') && 
+      !para.trim().startsWith('<div') &&
+      !para.trim().startsWith('<ul') &&
+      !para.trim().startsWith('<li') &&
       para.trim().length > 0
     ) {
       return `<p class="mb-3">${para}</p>`;
     }
     return para;
   }).join('\n\n');
-  
+
   return formattedText;
 }
 
@@ -90,8 +90,8 @@ function formatTextWithMarkers(text: string): string {
 function shouldAutoFormat(text: string): boolean {
   // Check for markdown-style formatting indicators
   return /\*\*(.*?)\*\*/.test(text) ||   // Bold text
-         /^\d+\.\s+/m.test(text) ||      // Numbered lists
-         /^\s*-\s+/m.test(text);         // Bullet points
+    /^\d+\.\s+/m.test(text) ||      // Numbered lists
+    /^\s*-\s+/m.test(text);         // Bullet points
 }
 
 // Function to safely render HTML content
@@ -106,28 +106,28 @@ const MessageContent = ({ content, isFormatted }: { content: string; isFormatted
       return content; // Regular text content
     }
   };
-  
+
   const formattedContent = getFormattedContent();
-  
+
   if (isFormatted || shouldAutoFormat(content)) {
     return (
-      <div 
+      <div
         className="text-sm message-content overflow-hidden overflow-wrap-break-word"
-        dangerouslySetInnerHTML={{ __html: formattedContent }} 
+        dangerouslySetInnerHTML={{ __html: formattedContent }}
       />
     );
   }
-  
+
   // For regular text messages
   return <div className="text-sm whitespace-pre-wrap overflow-wrap-break-word">{content}</div>;
 };
 
 const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestions = [], onAskQuestion, report: initialReport, brandSettings, partnerId }: ChatInterfaceProps) => {
-    // Use partner's primary color only if it's not a starter user
-    const shouldUsePartnerColor = brandSettings && brandSettings.brandName !== 'Vidal Chat';
-    const iconColor = shouldUsePartnerColor && brandSettings?.customColors?.primary 
-        ? brandSettings.customColors.primary 
-        : undefined;
+  // Use partner's primary color when available; otherwise fall back to Vidal blue
+  const shouldUsePartnerColor = brandSettings && brandSettings.brandName !== 'Vidal Chat';
+  const primaryColor = shouldUsePartnerColor && brandSettings?.customColors?.primary
+    ? brandSettings.customColors.primary
+    : '#2563eb';
   // State for local report data (to handle filtering questions)
   const [report, setReport] = useState<ReportData | null>(initialReport || null);
   // Separate state for suggested questions
@@ -190,7 +190,7 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
     if (!input.trim()) return;
 
     const userQuestion = input.trim();
-    
+
     const newUserMessage: Message = {
       id: messages.length + 1,
       content: userQuestion,
@@ -200,12 +200,12 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
 
     // Add to asked questions set
     setAskedQuestions(prev => new Set(prev).add(userQuestion));
-    
+
     setMessages((prev) => [...prev, newUserMessage]);
-    
+
     // Clear input immediately
     setInput("");
-    
+
     onAskQuestion(userQuestion);
     getOpenAIResponse(userQuestion);
   };
@@ -277,7 +277,7 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
     // Update states immediately without setTimeout
     setAskedQuestions(prev => new Set(prev).add(question));
     setMessages((prev) => [...prev, newUserMessage]);
-    
+
     // Filter out the selected question from suggested questions in local report
     if (report?.suggestedQuestions) {
       setReport({
@@ -285,10 +285,10 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
         suggestedQuestions: report.suggestedQuestions.filter(q => q !== question)
       });
     }
-    
+
     // Also filter local suggestedQuestions
     setSuggestedQuestions(prev => prev.filter(q => q !== question));
-    
+
     onAskQuestion(question);
     getOpenAIResponse(question);
   };
@@ -333,28 +333,28 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
       timestamp: new Date(),
       isFormatted: true,
     };
-    
+
     setMessages(prev => [...prev, uploadingMessage]);
-    
+
     // Wait a moment to show upload progress
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     // Update the same message to show uploaded image
-    setMessages(prev => prev.map(msg => 
-      msg.id === messageId 
+    setMessages(prev => prev.map(msg =>
+      msg.id === messageId
         ? {
-            ...msg,
-            content: `<div class="flex flex-col items-end space-y-2">
+          ...msg,
+          content: `<div class="flex flex-col items-end space-y-2">
               <div class="text-sm opacity-80">📷 Uploaded: ${data.fileName}</div>
               <img src="${data.fileUrl}" alt="${data.fileName}" class="max-w-[200px] rounded-lg shadow-md hover:scale-105 transition-transform duration-200" />
             </div>`
-          }
+        }
         : msg
     ));
-    
+
     // Show typing indicator
     setIsTyping(true);
-    
+
     // Get simple AI response for the uploaded image (not medical analysis)
     try {
       const response = await fetch('/api/chat-image', {
@@ -374,7 +374,7 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
       }
 
       const result = await response.json();
-      
+
       if (result.success) {
         const botMessage: Message = {
           id: Date.now() + 1,
@@ -383,7 +383,7 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
           timestamp: new Date(),
           isFormatted: true,
         };
-        
+
         setMessages(prev => [...prev, botMessage]);
       } else {
         throw new Error(result.error || 'Failed to analyze image');
@@ -407,9 +407,9 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
   const getFilteredSuggestedQuestions = () => {
     const reportQuestions = report?.suggestedQuestions || [];
     const allQuestions = [...new Set([...reportQuestions, ...suggestedQuestions])];
-    
+
     const filteredQuestions = allQuestions.filter(question => !askedQuestions.has(question));
-    
+
     // Limit to maximum 3 questions
     return filteredQuestions.slice(0, 3);
   };
@@ -417,36 +417,34 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
   const filteredQuestions = getFilteredSuggestedQuestions();
 
   return (
-    <Card className={cn("flex flex-col h-full overflow-hidden backdrop-blur-sm bg-card/90 transition-all duration-300", className)}>
+    <Card className={cn("flex flex-col h-full overflow-hidden transition-all duration-300", className)} style={{ backgroundColor: '#ffffff' }}>
       {/* Header - 7% height */}
-      <CardHeader className="flex flex-row items-center justify-between py-2 px-4 space-y-0 h-[7%] min-h-[50px]">
+      <CardHeader className="flex flex-row items-center justify-between py-2 px-4 space-y-0 h-[7%] min-h-[50px]" style={{ borderBottomColor: '#E5E7EB' }}>
         <div className="flex items-center space-x-2">
-          <Avatar className="h-8 w-8 bg-primary/10 flex justify-center items-center">
+          <Avatar className="h-8 w-8 flex justify-center items-center" style={{ backgroundColor: '#2563eb' }}>
             {brandSettings?.logoUrl ? (
-              <img 
-                src={brandSettings.logoUrl} 
+              <img
+                src={brandSettings.logoUrl}
                 alt={brandSettings.brandName}
                 className="h-6 w-6 rounded object-cover"
               />
             ) : (
-                              <Bot 
-                  className="h-4 w-4" 
-                  style={{
-                    color: partnerId && partnerId !== 'starter-user' && brandSettings?.customColors?.primary 
-                      ? brandSettings.customColors.primary 
-                      : 'var(--primary)'
-                  }}
-                />
+              <Bot
+                className="h-4 w-4 text-white"
+                style={{
+                  color: "#fff"
+                }}
+              />
             )}
           </Avatar>
-          <h3 className="font-medium">
+          <h3 className="font-medium" style={{ color: '#111827' }}>
             {brandSettings?.brandName ? `${brandSettings.brandName} Assistant` : 'Medical Assistant'}
           </h3>
         </div>
-        
+
         {/* Mobile Report Button */}
         {report && (
-          <Button 
+          <Button
             variant="secondary"
             size="sm"
             className="lg:hidden rounded-full bg-primary text-primary-foreground h-10 w-10 p-0"
@@ -457,13 +455,19 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
           </Button>
         )}
       </CardHeader>
-      
-      <Separator />
-      
+
+      <Separator
+        className={cn(
+          "transition-all duration-300 ease-in-out delay-300 bg-slate-200"
+        )}
+      />
+
+
       {/* Messages Area - Auto expanding to fill available space */}
-      <CardContent 
+      <CardContent
         ref={messageContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-4 h-[80%]"
+        style={{ backgroundColor: '#ffffff' }}
       >
         {messages.map((message) => (
           <div
@@ -471,8 +475,8 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
             className={cn(
               "flex max-w-[85%]",
               messageAnimation ? "animate-message-in" : "",
-              message.sender === "user" 
-                ? "ml-auto justify-end" 
+              message.sender === "user"
+                ? "ml-auto justify-end"
                 : "mr-auto justify-start"
             )}
             style={{
@@ -483,11 +487,14 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
               className={cn(
                 "rounded-lg px-4 py-3 shadow-subtle overflow-hidden",
                 message.sender === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : message.isFormatted
-                    ? "bg-secondary/80 text-secondary-foreground formatted-message"
-                    : "bg-secondary text-secondary-foreground"
+                  ? "text-white"
+                  : ""
               )}
+              style={
+                message.sender === "user"
+                  ? { backgroundColor: primaryColor }
+                  : { backgroundColor: '#F3F4F6', color: '#111827', border: '1px solid #E5E7EB' }
+              }
             >
               <MessageContent content={message.content} isFormatted={message.isFormatted} />
             </div>
@@ -495,7 +502,7 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
         ))}
         {isTyping && (
           <div className="flex max-w-[80%] mr-auto animate-fade-in">
-            <div className="rounded-lg px-4 py-2 bg-secondary text-secondary-foreground shadow-subtle">
+            <div className="rounded-lg px-4 py-2 shadow-subtle" style={{ backgroundColor: '#F3F4F6', color: '#111827', border: '1px solid #E5E7EB' }}>
               <div className="flex space-x-1">
                 <span className="animate-pulse">•</span>
                 <span className="animate-pulse" style={{ animationDelay: "0.2s" }}>•</span>
@@ -506,11 +513,11 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
         )}
         <div ref={messagesEndRef} />
       </CardContent>
-      
+
       {/* Suggested Questions Section - Absolute positioning */}
       {filteredQuestions.length > 0 && (
-        <div className="w-full bg-card border-t relative z-20 px-4 py-2">
-          <div className="text-sm mb-2 font-semibold text-muted-foreground">💡 Suggested Questions</div>
+        <div className="w-full border-t relative z-20 px-4 py-2" style={{ backgroundColor: '#ffffff', borderTopColor: '#E5E7EB' }}>
+          <div className="text-sm mb-2 font-semibold" style={{ color: '#6B7280' }}>💡 Suggested Questions</div>
           <div className="flex flex-col space-y-2 sm:flex-row sm:flex-wrap sm:space-y-0 sm:gap-2 pb-2">
             {filteredQuestions.map((question, index) => (
               <Button
@@ -521,6 +528,9 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
                 style={{
                   animationDelay: `${index * 100}ms`,
                   animationFillMode: "forwards",
+                  backgroundColor: '#F3F4F6',
+                  color: '#111827',
+                  border: '1px solid #E5E7EB'
                 }}
                 aria-label={`Suggested Question ${index + 1}`}
                 onClick={() => handleSuggestedQuestion(question)}
@@ -531,9 +541,9 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
           </div>
         </div>
       )}
-      
+
       {/* Input Area - 6% height */}
-      <CardFooter className="p-2 border-t mt-auto bg-card z-30 h-[6%] min-h-[50px]">
+      <CardFooter className="p-2 border-t mt-auto z-30 h-[6%] min-h-[50px]" style={{ backgroundColor: '#ffffff', borderTopColor: '#E5E7EB' }}>
         <form
           className="flex w-full items-center space-x-2"
           onSubmit={(e) => {
@@ -546,9 +556,14 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
             placeholder="Type your question..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            className="flex-1"
+            className="flex-1 placeholder:text-gray-500 focus-visible:ring-0 focus:ring-0 focus:outline-none focus:border-[#2563eb]"
+            style={{ backgroundColor: '#ffffff', borderColor: '#E5E7EB', color: '#111827', caretColor: primaryColor }}
           />
-          
+          <style jsx global>{`
+            input::placeholder { color: #6B7280; opacity: 1; }
+            input:focus { outline: none !important; box-shadow: none !important; }
+          `}</style>
+
           {/* Image Upload Button */}
           <div className="relative">
             <input
@@ -572,35 +587,35 @@ const ChatInterface = ({ className, suggestedQuestions: initialSuggestedQuestion
               size="icon"
               variant="secondary"
               onClick={() => document.getElementById('image-upload')?.click()}
-              className="bg-secondary hover:bg-secondary/80 text-secondary-foreground border border-input"
+              className="border focus:outline-none focus:ring-0"
               style={{
-                backgroundColor: iconColor,
-                borderColor: iconColor,
+                backgroundColor: primaryColor,
+                borderColor: primaryColor,
               }}
             >
-              <Image 
-                className="h-4 w-4" 
-                style={{ color: iconColor ? 'white' : undefined }}
+              <Image
+                className="h-4 w-4"
+                style={{ color: 'white' }}
               />
             </Button>
           </div>
-          
+
           <Button
             type="submit"
             size="icon"
             disabled={!input.trim()}
             className={cn(
-              "transition-all duration-300",
+              "transition-all duration-300 text-white focus:outline-none focus:ring-0",
               !input.trim() ? "opacity-50" : "opacity-100"
             )}
             style={{
-              backgroundColor: iconColor,
-              borderColor: iconColor,
+              backgroundColor: primaryColor,
+              borderColor: primaryColor,
             }}
           >
-            <Send 
-              className="h-4 w-4" 
-              style={{ color: iconColor ? 'white' : undefined }}
+            <Send
+              className="h-4 w-4"
+              style={{ color: 'white' }}
             />
           </Button>
         </form>

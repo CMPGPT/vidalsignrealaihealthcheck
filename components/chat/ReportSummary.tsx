@@ -157,7 +157,7 @@ const ReportSummary = ({ className, report, onDelete, onExpire, databaseExpiryTi
 
   return (
     <Card className={cn(
-      "w-full overflow-hidden backdrop-blur-sm bg-card/90",
+      "w-full overflow-hidden backdrop-blur-sm bg-white text-black dark:bg-card/90 dark:text-white",
       "transition-all duration-500 ease-in-out",
       isVisible ? "opacity-100 transform translate-y-0" : "opacity-0 transform translate-y-8",
       className
@@ -191,7 +191,7 @@ const ReportSummary = ({ className, report, onDelete, onExpire, databaseExpiryTi
         />
       </CardContent>
       <Separator className={cn(
-        "transition-all duration-300 ease-in-out delay-300",
+        "transition-all duration-300 ease-in-out delay-300 bg-slate-200",
         contentVisible ? "opacity-100" : "opacity-0"
       )} />
       <CardFooter className={cn(
@@ -208,23 +208,23 @@ const ReportSummary = ({ className, report, onDelete, onExpire, databaseExpiryTi
             <Button 
               variant="destructive" 
               size="sm" 
-              className="text-xs h-8"
+              className="text-xs h-8 bgred-500 hover:bg-red-600 focus:ring-red-500 text-white"
             >
               <Trash2 className="h-3.5 w-3.5 mr-1" />
               Delete now
             </Button>
           </AlertDialogTrigger>
-          <AlertDialogContent className="glass">
+          <AlertDialogContent className="glass bg-white">
             <AlertDialogHeader>
               <AlertDialogTitle>Delete report?</AlertDialogTitle>
-              <AlertDialogDescription>
+              <AlertDialogDescription className="text-slate-500">
                 This will permanently delete your report. This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="text-slate-500 bg-teal-500 hover:bg-teal-600 border-none text-white">Cancel</AlertDialogCancel>
               <AlertDialogAction 
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="bg-destructive text-white bg-rose-500 hover:bg-rose-600"
                 onClick={handleDelete}
                 disabled={isLoading}
               >

@@ -189,12 +189,12 @@ export function UploadButton({
     const shouldUsePartnerColor = partnerId && partnerId !== 'starter-user';
     const buttonColor = shouldUsePartnerColor && brandSettings?.customColors?.primary 
         ? brandSettings.customColors.primary 
-        : undefined;
+        : '#2563eb';
 
     return (
         <div className="space-y-2">
             <Button 
-                className="relative overflow-hidden" 
+                className="relative overflow-hidden text-white" 
                 size="lg" 
                 disabled={isUploading || isUploadingInternal || !canUpload}
                 style={{
@@ -209,13 +209,10 @@ export function UploadButton({
                     onChange={handleFileSelect}
                     disabled={isUploading || isUploadingInternal || !canUpload}
                 />
-                <UploadCloud 
-                    className="h-4 w-4 mr-2" 
-                    style={{ color: buttonColor ? 'white' : undefined }}
-                />
+                <UploadCloud className="h-4 w-4 mr-2" style={{ color: 'white' }} />
                 {isUploading || isUploadingInternal ? "Uploading..." : "Upload Document"}
             </Button>
-            <div className="text-xs text-muted-foreground text-center">
+            <div className="text-xs text-center" style={{ color: '#111827' }}>
                 {uploadCount}/{maxUploads} files uploaded
                 {!canUpload && (
                     <div className="text-destructive mt-1">

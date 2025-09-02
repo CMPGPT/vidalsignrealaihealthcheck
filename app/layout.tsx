@@ -1,34 +1,44 @@
-import type { Metadata } from 'next';
-import './globals.css';
+import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 import AppProviders from './providers';
-import { Raleway } from 'next/font/google';
 import './suppress-warnings';
 
-// Load Raleway font
-const raleway = Raleway({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'], // Add weights as needed
-  variable: '--font-raleway', // Optional: for CSS variable usage
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: 'Vidal Sign',
-  description: 'Connect patients and healthcare providers seamlessly',
+  title: "VidalSigns - Understand Your Lab Results",
+  description: "Stop guessing what your health reports mean. Upload your file securely and get instant, easy-to-understand insights from our AI.",
+  keywords: "lab results, health reports, medical analysis, AI health assistant, HIPAA compliant",
   icons: {
     icon: '/icon.ico',
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang="en" className={raleway.className} suppressHydrationWarning>
-      <head />
-      <body suppressHydrationWarning>
-        <AppProviders>{children}</AppProviders>
+    <html lang="en">
+      <body
+        className={`${inter.variable} font-inter text-gray-800 antialiased bg-gray-50`}
+      >
+        <AppProviders>
+          {children}
+          <Toaster richColors position="top-right" />
+        </AppProviders>
       </body>
     </html>
   );

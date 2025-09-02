@@ -1,20 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import nodemailer from 'nodemailer';
 import dbConnect from '@/lib/dbConnect';
 import PublicLink from '@/models/PublicLink';
+import sendEmail from '@/lib/sendEmail';
 
-// Email configuration
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+// Uses shared SMTP configuration from lib/sendEmail
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,11 +17,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if environment variables are set
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-      console.error('Missing environment variables:', {
-        GMAIL_USER: process.env.GMAIL_USER ? 'SET' : 'MISSING',
-        GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD ? 'SET' : 'MISSING'
+    // Check if SMTP environment variables are set
+    if (!process.env.SMTP_HOST || !process.env.SMTP_PORT || !process.env.SMTP_USER || !process.env.SMTP_PASS || !process.env.SMTP_FROM) {
+      console.error('Missing SMTP environment variables:', {
+        SMTP_HOST: process.env.SMTP_HOST ? 'SET' : 'MISSING',
+        SMTP_PORT: process.env.SMTP_PORT ? 'SET' : 'MISSING',
+        SMTP_USER: process.env.SMTP_USER ? 'SET' : 'MISSING',
+        SMTP_PASS: process.env.SMTP_PASS ? 'SET' : 'MISSING',
+        SMTP_FROM: process.env.SMTP_FROM ? 'SET' : 'MISSING',
       });
       return NextResponse.json(
         { success: false, error: 'Email service not configured' },
@@ -70,7 +63,10 @@ export async function POST(request: NextRequest) {
 
     // Generate unique chat ID
     const chatId = uuidv4();
-    const chatLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/chat/${chatId}`;
+    // Resolve a reliable base URL
+    const origin = process.env.NEXT_PUBLIC_BASE_URL
+      || `${request.headers.get('x-forwarded-proto') || 'http'}://${request.headers.get('host') || 'localhost:3000'}`;
+    const chatLink = `${origin}/chat/${chatId}`;
 
     // Create PublicLink record in database
     const publicLink = new PublicLink({
@@ -86,11 +82,8 @@ export async function POST(request: NextRequest) {
     await publicLink.save();
 
     // Email content
-    const mailOptions = {
-      from: process.env.GMAIL_USER,
-      to: email,
-      subject: 'Your VidalSigns Lab Analysis Chat Link',
-      html: `
+    const subject = 'Your VidalSigns Lab Analysis Chat Link';
+    const html = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="text-align: center; margin-bottom: 30px;">
             <h1 style="color: #10b981; margin-bottom: 10px;">VidalSigns</h1>
@@ -133,11 +126,10 @@ export async function POST(request: NextRequest) {
             </p>
           </div>
         </div>
-      `,
-    };
+      `;
 
-    // Send email
-    await transporter.sendMail(mailOptions);
+    // Send email via shared SMTP utility
+    await sendEmail(email, subject, html);
 
     return NextResponse.json({
       success: true,
