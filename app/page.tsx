@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { ShieldCheck, UploadCloud, ActivitySquare, ArrowDownToLine, Microscope, FileText, Dna, Dumbbell, HeartPulse, Plus, Twitter, CheckCircle2, Mail, X } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Home() {
   const [isUploadView, setIsUploadView] = useState(true);
@@ -14,7 +15,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [wellnessPlanGenerated, setWellnessPlanGenerated] = useState(false);
-  
+
   // Email modal states (from existing Hero.tsx)
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [email, setEmail] = useState('');
@@ -28,7 +29,7 @@ export default function Home() {
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [paymentEmail, setPaymentEmail] = useState('');
   const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false);
-  
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
@@ -58,10 +59,10 @@ export default function Home() {
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    
+
     setIsSubmitting(true);
     setLimitReached(false);
-    
+
     try {
       const response = await fetch('/api/send-chat-link', {
         method: 'POST',
@@ -89,19 +90,19 @@ export default function Home() {
           setIsSubmitting(false);
           return;
         }
-        
+
         throw new Error(data.error || 'Failed to send chat link');
       }
     } catch (error) {
       console.error('Error sending chat link:', error);
       setIsSubmitting(false);
-      
+
       // Get specific error message
       let errorMessage = 'Failed to send chat link. Please try again.';
       if (error instanceof Error) {
         errorMessage = error.message;
       }
-      
+
       // Show error in modal instead of alert
       setEmail('');
       alert(errorMessage);
@@ -111,7 +112,7 @@ export default function Home() {
   const callGemini = async (prompt: string, isChat = false) => {
     setIsLoading(true);
     setGeminiOutput('');
-    
+
     const simulatedResults = "Cholesterol (Total): 210 mg/dL (Slightly Elevated), Vitamin D: 25 ng/mL (Low), Glucose: 95 mg/dL (Normal)";
     const personaSelect = document.getElementById('persona-select') as HTMLSelectElement;
     const selectedPersona = personaSelect?.options[personaSelect.selectedIndex]?.text.replace('AI Persona: ', '') || 'Supportive Coach';
@@ -127,7 +128,7 @@ export default function Home() {
     // Simulate API call with setTimeout
     setTimeout(() => {
       let simulatedResponse = '';
-      
+
       if (prompt.includes("Generate a simple, 1-week wellness plan")) {
         simulatedResponse = `Here's your personalized 1-week wellness plan:
 
@@ -163,7 +164,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
 
 *This is not medical advice. Please consult a healthcare professional.*`;
       }
-      
+
       setGeminiOutput(simulatedResponse);
       setChatHistory([...newChatHistory, { role: "model", parts: [{ text: simulatedResponse }] }]);
       setIsLoading(false);
@@ -208,7 +209,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
       features: ["1 QR Code"]
     },
     {
-      name: "Two QR Codes", 
+      name: "Two QR Codes",
       price: "$49",
       priceNumber: 49,
       quantity: 2,
@@ -219,7 +220,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
     },
     {
       name: "Three QR Codes",
-      price: "$79", 
+      price: "$79",
       priceNumber: 79,
       quantity: 3,
       originalPrice: "$87",
@@ -238,9 +239,9 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!paymentEmail || !selectedPlan) return;
-    
+
     setIsPaymentSubmitting(true);
-    
+
     try {
       console.log('🔍 PAYMENT: Creating checkout session for:', {
         plan: selectedPlan.name,
@@ -278,7 +279,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
       console.log('✅ PAYMENT: Redirecting to Stripe checkout');
       // Redirect to Stripe checkout
       window.location.href = data.url;
-      
+
     } catch (error) {
       console.error('❌ PAYMENT: Error:', error);
       setIsPaymentSubmitting(false);
@@ -307,12 +308,12 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
     const onDrag = (e: MouseEvent | TouchEvent) => {
       if (!isDragging) return;
       e.preventDefault();
-      
+
       const rect = slider.getBoundingClientRect();
       let x = 'touches' in e ? e.touches[0].clientX : e.clientX;
       let pos = (x - rect.left) / rect.width;
       pos = Math.max(0, Math.min(1, pos));
-      
+
       if (after && handle) {
         after.style.width = `${pos * 100}%`;
         handle.style.left = `${pos * 100}%`;
@@ -350,7 +351,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
       <header className="py-6 px-4 sm:px-6 lg:px-8 border-b border-gray-200 bg-white/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center space-x-3">
-            <ActivitySquare className="h-8 w-8 text-blue-600" />
+            <Image src="/mainlogo.png" alt="VidalSigns Logo" className="rounded-lg" width={40} height={40} />
             <div>
               <h1 className="text-xl font-bold text-gray-900">VidalSigns</h1>
               <p className="text-xs text-gray-500 mt-0.5">Clarity You Can Trust. Answers You Can Understand.</p>
@@ -368,14 +369,14 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
         {/* Hero Section */}
         <section id="how-it-works" className="hero-bg text-center py-20 sm:py-24 lg:py-32">
           <div className="container mx-auto px-4">
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight leading-tight">
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight leading-[1.5]">
               Understand Your Lab Results
-              <span className="block gradient-text mt-2">In Plain English.</span>
+              <span className="block gradient-text mt-2 py-2">In Plain English.</span>
             </h2>
-            <p className="mt-6 max-w-2xl mx-auto text-lg text-gray-600">
+            <p className="max-w-2xl mx-auto text-lg text-gray-600 mt-10">
               Stop guessing what your health reports mean. Upload your file securely and get instant, easy-to-understand insights from our AI.
             </p>
-            
+
             <div id="upload-section" className="mt-12 max-w-2xl mx-auto">
               {/* Upload View */}
               {isUploadView && (
@@ -391,7 +392,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
                   <p className="text-xs text-gray-500 mt-1">Enter your email to receive a secure chat link.</p>
                 </div>
               )}
-              
+
               {/* Results View */}
               {!isUploadView && (
                 <div id="results-view" className="text-left bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200">
@@ -406,7 +407,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
                     </ul>
                     <p className="mt-4 text-sm text-gray-500">This is a simulated analysis for demo purposes. This is not medical advice.</p>
                   </div>
-                  
+
                   {/* Interactive Section */}
                   <div className="mt-6 border-t border-gray-200 pt-6 space-y-6">
                     {/* Ask Question */}
@@ -420,10 +421,10 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
                         </select>
                       </div>
                       <div className="flex space-x-2">
-                        <input 
+                        <input
                           ref={chatInputRef}
-                          type="text" 
-                          placeholder="e.g., 'What foods are good for cholesterol?'" 
+                          type="text"
+                          placeholder="e.g., 'What foods are good for cholesterol?'"
                           className="flex-grow p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           onKeyPress={(e) => e.key === 'Enter' && askQuestion()}
                         />
@@ -432,10 +433,10 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
                         </button>
                       </div>
                     </div>
-                    
+
                     {/* Generate Wellness Plan */}
-                    <button 
-                      onClick={generateWellnessPlan} 
+                    <button
+                      onClick={generateWellnessPlan}
                       disabled={wellnessPlanGenerated}
                       className={`w-full text-left p-4 rounded-lg border transition-colors ${wellnessPlanGenerated ? 'bg-gray-100 border-gray-200 opacity-50 cursor-not-allowed' : 'bg-blue-50 hover:bg-blue-100 border-blue-200'}`}
                     >
@@ -473,7 +474,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
           <div className="container mx-auto px-4 text-center">
             <h3 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl mb-2">See the Difference Instantly</h3>
             <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-600 mb-12">From a confusing medical document to a clear, simple summary. Just slide to compare.</p>
-            
+
             <div className="comparison-slider" ref={sliderRef}>
               <div className="before">
                 <div className="report-content bg-gray-100 p-6 font-mono text-xs text-gray-700 overflow-hidden leading-relaxed">
@@ -553,7 +554,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
             </p>
           </div>
         </section>
-        
+
         {/* Report Types Section */}
         <section className="py-16 sm:py-20 bg-white">
           <div className="container mx-auto px-4">
@@ -571,7 +572,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
                   <p className="mt-1 text-sm text-gray-600">Clear explanations for reports from Quest, LabCorp, and more.</p>
                 </div>
               </div>
-              
+
               <div className="report-type-card bg-gray-50 p-6 rounded-xl border border-gray-200 flex items-start space-x-4">
                 <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
                   <Dna className="h-6 w-6" />
@@ -581,7 +582,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
                   <p className="mt-1 text-sm text-gray-600">Insights for GeneSight, 23andMe, and pharmacogenomic results.</p>
                 </div>
               </div>
-              
+
               <div className="report-type-card bg-gray-50 p-6 rounded-xl border border-gray-200 flex items-start space-x-4">
                 <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
                   <Dumbbell className="h-6 w-6" />
@@ -591,7 +592,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
                   <p className="mt-1 text-sm text-gray-600">Actionable advice for fitness assessments and health coaching.</p>
                 </div>
               </div>
-              
+
               <div className="report-type-card bg-gray-50 p-6 rounded-xl border border-gray-200 flex items-start space-x-4">
                 <div className="flex-shrink-0 h-10 w-10 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center">
                   <HeartPulse className="h-6 w-6" />
@@ -624,7 +625,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
                   </p>
                 </details>
               </div>
-              
+
               <div className="faq-item bg-white border border-gray-200 rounded-lg p-5">
                 <details>
                   <summary className="flex justify-between items-center font-semibold text-gray-900">
@@ -636,7 +637,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
                   </p>
                 </details>
               </div>
-              
+
               <div className="faq-item bg-white border border-gray-200 rounded-lg p-5">
                 <details>
                   <summary className="flex justify-between items-center font-semibold text-gray-900">
@@ -648,7 +649,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
                   </p>
                 </details>
               </div>
-              
+
               <div className="faq-item bg-white border border-gray-200 rounded-lg p-5">
                 <details>
                   <summary className="flex justify-between items-center font-semibold text-gray-900">
@@ -728,8 +729,8 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
                       </li>
                     ))}
                   </ul>
-                  <button 
-                    onClick={() => handlePlanSelect(plan)} 
+                  <button
+                    onClick={() => handlePlanSelect(plan)}
                     className="mt-8 w-full bg-blue-600 text-white font-semibold py-3 rounded-lg shadow-sm hover:bg-blue-700 transition-colors"
                   >
                     Choose Plan
@@ -747,7 +748,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="md:col-span-1">
               <div className="flex items-center space-x-3">
-                <ActivitySquare className="h-8 w-8 text-blue-500" />
+                <Image src="/mainlogo.png" alt="VidalSigns Logo" className="rounded-lg" width={40} height={40} />
                 <h2 className="text-2xl font-bold">VidalSigns</h2>
               </div>
               <p className="mt-4 text-sm text-gray-400">Your health, in plain English. Empowering individuals and wellness brands with accessible, understandable lab analysis.</p>
@@ -761,14 +762,6 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
                   <li><button onClick={() => scrollToSection('security')} className="text-gray-400 hover:text-white transition-colors text-left">Security</button></li>
                 </ul>
               </div>
-              {/* <div>
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300">Company</h3>
-                <ul className="mt-4 space-y-3">
-                  <li><a href="#" className="text-gray-400 hover:text-white transition-colors">About Us</a></li>
-                  <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Blog</a></li>
-                  <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Contact</a></li>
-                </ul>
-              </div> */}
               <div>
                 <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-300">For Professionals</h3>
                 <ul className="mt-4 space-y-3">
@@ -780,15 +773,17 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
           <div className="mt-8 border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
             <p className="text-sm text-gray-500">&copy; 2025 VidalSigns. All rights reserved.</p>
             <div className="flex space-x-6 mt-4 md:mt-0">
-              <a href="#" className="text-gray-500 hover:text-white">
-                <span className="sr-only">Twitter</span>
-                <Twitter className="h-6 w-6" />
-              </a>
+              <div className="flex space-x-6 text-sm text-white/60">
+                <a href="/privacy" className="hover:text-white transition-colors">Privacy Policy</a>
+                <a href="/terms" className="hover:text-white transition-colors">Terms of Service</a>
+                <a href="/data-protection" className="hover:text-white transition-colors">Data Protection</a>
+                <a href="/cookie-policy" className="hover:text-white transition-colors">Cookie Policy</a>
+              </div>
             </div>
           </div>
         </div>
       </footer>
-      
+
       {/* Email Modal (preserved from existing Hero.tsx) */}
       {showEmailModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -883,7 +878,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
           </div>
         </div>
       )}
-      
+
       {/* Payment Modal */}
       {showPaymentModal && selectedPlan && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -947,7 +942,7 @@ Your glucose levels are excellent at 95 mg/dL - keep up whatever you're doing th
           </div>
         </div>
       )}
-      
+
       {/* Modal */}
       {modalVisible && (
         <div className="modal-bg" style={{ display: 'flex' }} onClick={closeModal}>

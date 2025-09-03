@@ -135,22 +135,28 @@ Answer with only "YES" or "NO".`
         }, { status: 400 });
       }
       
-      console.log('Document validated as medical report, proceeding with analysis...');
+      console.log('Document validated as medical report, proceeding with GPT formatting...');
       
-      // Now send the extracted text to Mistral for comprehensive medical analysis formatting
-      console.log('Sending extracted text to Mistral for comprehensive medical analysis...');
-      const analysisResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'mistral-large-latest',
-          messages: [
-            {
-              role: 'system',
-              content: `You are a medical assistant specialized in analyzing and summarizing medical reports.
+      // Now send the extracted text to GPT for comprehensive medical analysis formatting (same as image processing)
+      console.log('Sending extracted text to GPT for comprehensive medical analysis formatting...');
+      
+      if (!process.env.OPENAI_API_KEY) {
+        console.error('Missing OPENAI_API_KEY environment variable');
+        return NextResponse.json(
+          { success: false, error: 'OpenAI API not configured' },
+          { status: 500 }
+        );
+      }
+
+      const { default: OpenAI } = await import('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      const analysisResponse = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a medical assistant specialized in analyzing and summarizing medical reports.
 
 Extract ALL information from the medical report and format it beautifully with markdown:
 
@@ -185,43 +191,29 @@ For normal values, use green color: <span style="color: green;">**Test Name:** V
 For abnormal values, use red color: <span style="color: red;">**Test Name:** Value (Elevated/Below normal)</span>
 
 Do NOT use #### or extra markdown symbols. Use clean ### for section headers.`
-            },
-            {
-              role: 'user',
-              content: `Please analyze this medical document text and extract ALL information including patient details, dates, lab numbers, and test results. Provide a comprehensive, beautifully formatted analysis:
+          },
+          {
+            role: 'user',
+            content: `Please analyze this medical document text and extract ALL information including patient details, dates, lab numbers, and test results. Provide a comprehensive, beautifully formatted analysis:
 
 ${extractedText}
 
 Please extract and format ALL the information from the report, including patient details, dates, lab numbers, and all test results. Make sure to highlight abnormal values in red and normal values in green. Use clean markdown formatting without extra symbols.`
-            }
-          ],
-          max_tokens: 3000
-        })
+          }
+        ],
+        max_tokens: 2000
       });
 
-      if (!analysisResponse.ok) {
-        const errorText = await analysisResponse.text();
-        console.error('Mistral analysis error response:', errorText);
-        throw new Error(`Mistral analysis error: ${errorText.substring(0, 100)}`);
-      }
+      const formattedSummary = analysisResponse.choices[0].message.content || 'No meaningful content extracted.';
+      console.log('Comprehensive medical analysis completed with GPT');
 
-      const analysisData = await analysisResponse.json();
-      const formattedSummary = analysisData.choices[0].message.content;
-      console.log('Comprehensive medical analysis completed');
-
-      // Generate suggested questions based on the analysis
-      const questionsResponse = await fetch('https://api.mistral.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.MISTRAL_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'mistral-large-latest',
-          messages: [
-            {
-              role: 'system',
-              content: `You are a medical assistant helping patients understand their medical reports.
+      // Generate suggested questions based on the analysis using GPT (same as image processing)
+      const questionsResponse = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a medical assistant helping patients understand their medical reports.
 
 Based on the comprehensive summary of a medical report, generate exactly 3 relevant and specific questions a patient might ask, including about abnormal values or next steps.
 
@@ -232,61 +224,40 @@ Example:
   "questions": ["What does my elevated creatinine level mean?", "Is the white blood cell count normal?", "What lifestyle changes should I consider?"],
   "recommendationQuestions": ["Do I need to change my diet?", "Should I schedule another test soon?"]
 }`
-            },
-            {
-              role: 'user',
-              content: `Here is the comprehensive medical report summary: ${formattedSummary}`,
-            },
-          ],
-          max_tokens: 500
-        })
+          },
+          {
+            role: 'user',
+            content: `Here is the comprehensive medical report summary: ${formattedSummary}`,
+          },
+        ],
+        max_tokens: 500
       });
 
-      if (!questionsResponse.ok) {
-        const errorText = await questionsResponse.text();
-        console.error('Questions generation error response:', errorText);
-        // Use default questions if generation fails
-        return NextResponse.json({
-          success: true,
-          summary: formattedSummary,
-          suggestedQuestions: [
-            "What do these specific lab values mean for my health?",
-            "Are there any values outside the normal range?",
-            "What lifestyle changes should I consider based on these results?"
-          ],
-          recommendationQuestions: [
-            "What lifestyle changes should I consider?",
-            "Do I need to follow up with my doctor?",
-            "Are there any dietary recommendations based on these results?"
-          ],
-          pageCount: pageCount,
-          textLength: extractedText.length
-        });
-      }
-
-      const questionsData = await questionsResponse.json();
       let suggestedQuestions = [
-        "What do these specific lab values mean for my health?",
-        "Are there any values outside the normal range?",
-        "What lifestyle changes should I consider based on these results?"
+        'What do these lab results mean for my health?',
+        'Are there any values outside the normal range?',
+        'What lifestyle changes should I consider based on these results?'
       ];
       let recommendationQuestions = [
-        "What lifestyle changes should I consider?",
-        "Do I need to follow up with my doctor?",
-        "Are there any dietary recommendations based on these results?"
+        'What lifestyle changes should I consider?',
+        'Do I need to follow up with my doctor?',
+        'Are there any dietary recommendations based on these results?'
       ];
 
       try {
-        const questionsContent = questionsData.choices[0].message.content;
+        const questionsContent = questionsResponse.choices[0].message.content || '{}';
         const parsedQuestions = JSON.parse(questionsContent);
-        if (parsedQuestions.questions) {
-          suggestedQuestions = parsedQuestions.questions;
+        
+        if (!parsedQuestions.questions || !parsedQuestions.recommendationQuestions) {
+          throw new Error('Invalid format from OpenAI');
         }
-        if (parsedQuestions.recommendationQuestions) {
-          recommendationQuestions = parsedQuestions.recommendationQuestions;
-        }
-      } catch (parseError) {
-        console.error('Failed to parse questions JSON:', parseError);
+
+        suggestedQuestions = parsedQuestions.questions;
+        recommendationQuestions = parsedQuestions.recommendationQuestions;
+        console.log('Generated suggested questions:', suggestedQuestions);
+        console.log('Generated recommendation questions:', recommendationQuestions);
+      } catch (error) {
+        console.error('Error parsing OpenAI questions JSON:', error);
         // Use default questions if parsing fails
       }
 

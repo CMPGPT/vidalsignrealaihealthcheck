@@ -358,7 +358,7 @@ export default function SecureChatPage() {
                   {validationError !== "Link has expired" && validationError !== "Link not found" && validationError}
                 </AlertDescription>
               </Alert>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-black">
                 Please contact your healthcare provider for a new secure link.
               </p>
             </div>
@@ -376,7 +376,7 @@ export default function SecureChatPage() {
         
         {/* Countdown Timer */}
         {expiryTime && (
-          <div className="absolute right-4 top-1/2 text-black transform -translate-y-1/2">
+          <div className="absolute right-4 top-1/2 text-black!important transform -translate-y-1/2">
             <CountdownTimer 
               expiryTime={expiryTime} 
               onExpire={handleExpire}
@@ -538,8 +538,8 @@ export default function SecureChatPage() {
                         : 'var(--primary) var(--primary) var(--primary) transparent'
                     }}
                   ></div>
-                  <p className="text-muted-foreground">Analyzing your document with AI...</p>
-                  <p className="text-xs text-muted-foreground">This may take up to 40 seconds</p>
+                  <p className="text-black">Analyzing your document with AI...</p>
+                  <p className="text-xs text-black">This may take up to 40 seconds</p>
                 </div>
               </Card>
             ) : isSearchingReport ? (
@@ -553,8 +553,8 @@ export default function SecureChatPage() {
                         : 'var(--primary) var(--primary) var(--primary) transparent'
                     }}
                   ></div>
-                  <p className="text-muted-foreground">Searching for existing reports...</p>
-                  <p className="text-xs text-muted-foreground">Checking database for previous uploads</p>
+                  <p className="text-black">Searching for existing reports...</p>
+                  <p className="text-xs text-black">Checking database for previous uploads</p>
                 </div>
               </Card>
             ) : report ? (

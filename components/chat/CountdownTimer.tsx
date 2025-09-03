@@ -72,7 +72,7 @@ const CountdownTimer = ({ className, expiryTime, onExpire }: CountdownTimerProps
   };
 
   return (
-    <div className={cn("flex items-center space-x-2", isExpiring ? "text-destructive" : "text-muted-foreground", className)}>
+    <div className={cn("flex items-center space-x-2", isExpiring ? "text-black" : "text-green-600", className)}>
       <Clock className="h-4 w-4" />
       <div className="text-sm font-medium transition-colors">
         <span className="tabular-nums">{formatTimeUnit(timeLeft.hours)}</span>:

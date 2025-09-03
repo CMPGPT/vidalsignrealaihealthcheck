@@ -1,8 +1,12 @@
+import { FooterForAll } from '@/components/FooterForAll';
+import { HeaderForAll } from '@/components/HeaderForAll';
 import { Layout } from '@/components/layout/Layout';
+import { Footer } from 'react-day-picker';
 
 export default function TermsOfServicePage() {
   return (
-    <Layout>
+    <>
+    <HeaderForAll />
       <div className="container mx-auto px-4 md:px-6 py-20 max-w-3xl mt-20">
       <h1 className="text-3xl font-bold mb-2">Terms of Service</h1>
       <p className="text-sm text-muted-foreground mb-8">Last Updated: 08 August 2025</p>
@@ -21,7 +25,8 @@ export default function TermsOfServicePage() {
         </p>
       </section>
       </div>
-    </Layout>
+      <FooterForAll />
+    </>
   );
 }
 
