@@ -243,6 +243,120 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* Sonner Toast Customization */
+
+/* Success Toasts - Blue (#2563eb) */
+[data-sonner-toaster] [data-type="success"] {
+  background-color: #2563eb !important;
+  border-color: #2563eb !important;
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="success"] [data-title] {
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="success"] [data-description] {
+  color: rgb(229 231 235) !important;
+}
+
+[data-sonner-toaster] [data-type="success"] [data-icon] {
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="success"] [data-close-button] {
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-sonner-toaster] [data-type="success"] [data-close-button]:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Error Toasts - Red */
+[data-sonner-toaster] [data-type="error"] {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="error"] [data-title] {
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="error"] [data-description] {
+  color: rgb(229 231 235) !important;
+}
+
+[data-sonner-toaster] [data-type="error"] [data-icon] {
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="error"] [data-close-button] {
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-sonner-toaster] [data-type="error"] [data-close-button]:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Info Toasts - Blue variant */
+[data-sonner-toaster] [data-type="info"] {
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="info"] [data-title] {
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="info"] [data-description] {
+  color: rgb(229 231 235) !important;
+}
+
+[data-sonner-toaster] [data-type="info"] [data-icon] {
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="info"] [data-close-button] {
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-sonner-toaster] [data-type="info"] [data-close-button]:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Warning Toasts - Amber */
+[data-sonner-toaster] [data-type="warning"] {
+  background-color: #f59e0b !important;
+  border-color: #f59e0b !important;
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="warning"] [data-title] {
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="warning"] [data-description] {
+  color: rgb(229 231 235) !important;
+}
+
+[data-sonner-toaster] [data-type="warning"] [data-icon] {
+  color: white !important;
+}
+
+[data-sonner-toaster] [data-type="warning"] [data-close-button] {
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+[data-sonner-toaster] [data-type="warning"] [data-close-button]:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
 @layer base {
   * {
     border-color: rgb(var(--border));
